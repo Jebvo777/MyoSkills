@@ -178,7 +178,7 @@ function selectPlanet(id){
  if($('#patient-planet-detail')){$('#patient-planet-detail').innerHTML=patientPlanetDetail(id);localizeStatic($('#patient-planet-detail'));return;}
  const p=(state.public?.planets||defaultPlanets).find(p=>Number(p.id)===id);if(!p)return;
  const detail=$('#public-planet-detail');if(!detail)return;
- detail.innerHTML=`<span class="eyebrow">0${id} / ${t(p.subtitle)}</span><h3>${esc(p.title)}</h3><p>${esc(p.description||t('Каждая новая миссия появляется после назначения врача.'))}</p><div class="detail-visual"><img class="planet-image" src="${asset(p.image)}" alt="${esc(p.title)}"></div>${navLink('Начать путешествие',state.user?'galaxy':'register','arrow','btn btn-mint')}<small>${t('Доступ открывает миотерапевт')}</small>`;
+ detail.innerHTML=`<span class="eyebrow">0${id} / ${t(p.subtitle)}</span><h3>${esc(p.title)}</h3><p>${esc(p.description||t('Каждая новая миссия появляется после назначения врача.'))}</p><div class="detail-visual"><img class="planet-image" src="${asset(p.image)}" alt="${esc(p.title)}"></div>${navLink('Начать путешествие',state.user?(state.user.role==='patient'?'galaxy':homeForRole()):'register','arrow','btn btn-mint')}<small>${t('Доступ открывает миотерапевт')}</small>`;
 }
 function filterSpecialists(){
  if(!$('#specialist-results'))return;const q=($('#specialist-search')?.value||'').toLowerCase();const type=$('#specialist-type')?.value||'';let doctors=(state.public?.specialists||[]).filter(d=>(!type||d.specialty===type)&&`${d.name} ${d.city} ${d.clinic}`.toLowerCase().includes(q));

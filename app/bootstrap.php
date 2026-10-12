@@ -7,6 +7,8 @@ $defaults = require MYO_ROOT . '/config.example.php';
 $local = is_file(MYO_ROOT . '/config.local.php') ? require MYO_ROOT . '/config.local.php' : [];
 $GLOBALS['myo_config'] = array_replace_recursive($defaults, is_array($local) ? $local : []);
 if (getenv('MYO_BASE_PATH') !== false) $GLOBALS['myo_config']['base_path'] = rtrim((string)getenv('MYO_BASE_PATH'), '/');
+foreach(['HOST'=>'host','PORT'=>'port','NAME'=>'name','USER'=>'user','PASSWORD'=>'password'] as $envKey=>$configKey) if(getenv('MYO_DB_'.$envKey)!==false) $GLOBALS['myo_config']['db'][$configKey]=getenv('MYO_DB_'.$envKey);
+if(getenv('MYO_DEBUG')==='1') $GLOBALS['myo_config']['debug']=true;
 
 if (PHP_SAPI !== 'cli') {
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
@@ -128,6 +130,16 @@ function patient_id(array $u, array $data = []): int { return $u['role']==='pati
 function audit(array $u, string $action, string $type='', ?int $id=null): void { insert('audit_logs',['user_id'=>$u['id'],'action'=>$action,'resource_type'=>$type,'resource_id'=>$id,'created_at'=>now()]); }
 function notification(int $userId,string $type,string $title,string $body='',string $link=''): void {
     insert('notifications',['user_id'=>$userId,'type'=>$type,'title'=>$title,'body'=>$body,'link'=>$link,'created_at'=>now()]);
+    if(config('mail.enabled')) {
+        $recipient=one('SELECT email,preferences_json FROM users WHERE id=? AND active=1',[$userId]);
+        $prefs=json_decode($recipient['preferences_json']??'{}',true)?:[];
+        $from=(string)config('mail.from');
+        if($recipient && !empty($prefs['email']) && filter_var($from,FILTER_VALIDATE_EMAIL)) {
+            $message=$title."\n\n".$body."\n\n".rtrim((string)config('app_url'),'/').'/index.php'.($link?:'');
+            $subject='=?UTF-8?B?'.base64_encode('MyoSkills · '.$title).'?=';
+            @mail($recipient['email'],$subject,$message,"From: ".$from."\r\nContent-Type: text/plain; charset=UTF-8");
+        }
+    }
 }
 function notify_team(int $patientId,string $type,string $title,string $body='',string $link=''): void {
     foreach(many('SELECT doctor_id FROM patient_team WHERE patient_id=? AND status=?',[$patientId,'active']) as $m) notification((int)$m['doctor_id'],$type,$title,$body,$link);

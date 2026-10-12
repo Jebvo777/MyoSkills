@@ -1,0 +1,203 @@
+"""End-to-end PHP + MySQL checks in a dedicated, disposable myoskills_test DB."""
+from pathlib import Path
+import os,sys,json,time,subprocess,shlex,http.cookiejar,urllib.request,urllib.error,urllib.parse,uuid
+
+ROOT=Path(__file__).resolve().parents[1]
+RUNTIME=ROOT/'tests'/'runtime'
+RUNTIME.mkdir(parents=True,exist_ok=True)
+PHP=shlex.split(os.environ.get('MYO_TEST_PHP','php'))
+MYSQL=shlex.split(os.environ.get('MYO_TEST_MYSQL_COMMAND','mysql -uroot'))
+PORT=int(os.environ.get('MYO_TEST_PORT','8080'))
+BASE=f'http://127.0.0.1:{PORT}/mio/'
+TEST_DB='myoskills_test'
+checks=[]
+def check(name,condition):
+    if not condition:raise AssertionError(name)
+    checks.append(name)
+def database(statement):
+    return subprocess.run(MYSQL,input=statement,text=True,capture_output=True,check=True).stdout
+database(f'CREATE DATABASE IF NOT EXISTS {TEST_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;')
+database(f'USE {TEST_DB};SET FOREIGN_KEY_CHECKS=0;'+''.join(f'DROP TABLE IF EXISTS `{t}`;' for t in database(f'SHOW TABLES FROM {TEST_DB};').splitlines()[1:])+'SET FOREIGN_KEY_CHECKS=1;')
+database(f'USE {TEST_DB};'+(ROOT/'database/schema.sql').read_text())
+database(f'USE {TEST_DB};'+(ROOT/'database/seed.sql').read_text())
+env=os.environ.copy();env.update({'MYO_DB_HOST':'127.0.0.1','MYO_DB_PORT':os.environ.get('MYO_TEST_DB_PORT','3307'),'MYO_DB_NAME':TEST_DB,'MYO_DB_USER':'root','MYO_DB_PASSWORD':'','MYO_BASE_PATH':'/mio','MYO_DEBUG':'1'})
+site=RUNTIME/'www';site.mkdir(exist_ok=True)
+link=site/'mio'
+if not link.exists():link.symlink_to(ROOT,target_is_directory=True)
+log=(RUNTIME/'php-http.log').open('w')
+server=subprocess.Popen(PHP+['-d','upload_max_filesize=80M','-d','post_max_size=100M','-S',f'127.0.0.1:{PORT}','-t',str(site),str(ROOT/'tests/router.php')],env=env,stdout=log,stderr=log)
+
+class Client:
+    def __init__(self):
+        self.cookies=http.cookiejar.CookieJar()
+        self.opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookies));self.csrf=''
+        self.get('auth.me')
+    def raw(self,path,data=None,headers=None):
+        req=urllib.request.Request(BASE+path,data=data,headers=headers or {})
+        try:r=self.opener.open(req,timeout=10)
+        except urllib.error.HTTPError as e:r=e
+        return r.status,dict(r.headers),r.read()
+    def request(self,action,data=None,expected=200,params=None,csrf=None):
+        path='api.php?'+urllib.parse.urlencode({'action':action,**(params or {})})
+        headers={'Accept':'application/json'};body=None
+        if data is not None:body=json.dumps(data).encode();headers.update({'Content-Type':'application/json','X-CSRF-Token':self.csrf if csrf is None else csrf})
+        status,head,raw=self.raw(path,body,headers)
+        try:result=json.loads(raw)
+        except Exception:raise AssertionError(f'{action}: non-JSON {status}: {raw[:300]!r}')
+        if status!=expected:raise AssertionError(f'{action}: expected {expected}, got {status}: {result}')
+        if result.get('data',{}).get('csrf') if isinstance(result.get('data'),dict) else False:self.csrf=result['data']['csrf']
+        return result.get('data',result)
+    def get(self,action,expected=200,**params):return self.request(action,expected=expected,params=params)
+    def post(self,action,data,expected=200,csrf=None):return self.request(action,data,expected=expected,csrf=csrf)
+    def login(self,email):return self.post('auth.login',{'email':email,'password':'MyoDemo!2026'})
+    def upload(self,name,content,category,patient_id=None,mime='application/octet-stream',expected=201):
+        boundary='MYO'+uuid.uuid4().hex
+        fields={'category':category}
+        if patient_id:fields['patient_id']=str(patient_id)
+        if category=='photo':fields['capture_date']='2026-10-12'
+        parts=[]
+        for key,v in fields.items():parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{v}\r\n'.encode())
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: {mime}\r\n\r\n'.encode()+content+b'\r\n')
+        parts.append(f'--{boundary}--\r\n'.encode())
+        status,head,raw=self.raw('api.php?action=upload',b''.join(parts),{'Content-Type':f'multipart/form-data; boundary={boundary}','X-CSRF-Token':self.csrf})
+        result=json.loads(raw)
+        if status!=expected:raise AssertionError(f'upload/{category}: {status} {result}')
+        return result.get('data',result)
+
+start=time.time()
+try:
+    for _ in range(60):
+        try:urllib.request.urlopen(BASE+'index.php',timeout=.5);break
+        except Exception:time.sleep(.1)
+    anon=Client()
+    pub=anon.get('public');check('public planets and verified specialists',len(pub['planets'])==6 and len(pub['specialists'])==4)
+    check('no password hashes in public responses','password_hash' not in json.dumps(pub))
+    status,headers,html=anon.raw('index.php');check('subdirectory HTML + CSP',status==200 and b'/mio/assets/js/app.js' in html and 'Content-Security-Policy' in headers)
+    check('anonymous dashboard blocked',anon.get('dashboard',401)['ok'] is False)
+    check('CSRF enforced',anon.post('auth.login',{'email':'alex@myoskills.test','password':'MyoDemo!2026'},419,csrf='bad')['ok'] is False)
+    check('role escalation registration blocked',anon.post('auth.register',{'email':'hack@example.test','name':'Test','password':'MyoDemo!2026','consent':True,'role':'admin'},400)['ok'] is False)
+    patient=Client();patient.login('alex@myoskills.test')
+    other=Client();other.login('alisa@myoskills.test')
+    myo=Client();myo.login('olga@myoskills.test')
+    ortho=Client();ortho.login('irina@myoskills.test')
+    ent=Client();ent.login('lev@myoskills.test')
+    admin=Client();admin.login('admin@myoskills.test')
+    check('patient and doctor login sessions',patient.get('auth.me')['user']['role']=='patient' and myo.get('auth.me')['user']['specialty']=='myotherapist')
+    dashboard=patient.get('dashboard');check('cross-planet assignments',len(dashboard['missions'])==6 and len(dashboard['team'])==2)
+    check('another patient dashboard blocked',other.get('doctor.patient',403,id=6)['ok'] is False)
+    check('unassigned mission blocked',patient.get('mission',403,id=7)['ok'] is False)
+    check('clinical history hidden from patient',patient.get('doctor.patient',403,id=6)['ok'] is False)
+    check('active team reads visit history',len(ortho.get('doctor.patient',id=6)['visits'])==2)
+    check('unrelated patient records blocked',ortho.get('doctor.patient',403,id=8)['ok'] is False)
+    check('pending referral cannot read history',ent.get('doctor.patient',403,id=6)['ok'] is False)
+    ent.post('referral.respond',{'id':1,'status':'arrived'})
+    check('referral acceptance unlocks history',len(ent.get('doctor.patient',id=6)['visits'])==2)
+    check('referral response is not replayable',ent.post('referral.respond',{'id':1,'status':'arrived'},409)['ok'] is False)
+    check('orthodontist cannot assign',ortho.post('assignment.save',{'patient_id':6,'exercise_id':4},403)['ok'] is False)
+    check('ENT cannot review',ent.post('submission.review',{'id':1,'status':'approved'},403)['ok'] is False)
+    check('GET cannot mutate',myo.get('submission.review',405,id=1,status='approved')['ok'] is False)
+    advanced=myo.post('assignment.save',{'patient_id':6,'exercise_id':4,'status':'active','instructions':'Test advanced assignment'})
+    check('myotherapist unlocks specific advanced exercise',patient.get('mission',id=advanced['id'])['level']==2)
+    myo.post('assignment.save',{'patient_id':6,'exercise_id':4,'status':'paused'})
+    check('paused assignment cannot be played',patient.get('mission',403,id=advanced['id'])['ok'] is False)
+    myo.post('assignment.save',{'patient_id':6,'exercise_id':4,'status':'active'})
+    first=patient.post('practice.complete',{'assignment_id':1});second=patient.post('practice.complete',{'assignment_id':1})
+    check('daily fuel awarded once',first['awarded'] and not second['awarded'] and first['stats']['fuel']==second['stats']['fuel'])
+    check('practice belongs to patient',other.post('practice.complete',{'assignment_id':1},403)['ok'] is False)
+    video=(ROOT/'assets/demo-mission.mp4').read_bytes()
+    media=patient.upload('practice.mp4',video,'video',mime='video/mp4')
+    check('real multipart video upload',media['mime_type']=='video/mp4')
+    check('protected video accessible to owner',patient.raw('media.php?id='+str(media['id']))[0]==200)
+    check('protected video blocked for other patient',other.raw('media.php?id='+str(media['id']))[0]==403)
+    status,head,chunk=myo.raw('media.php?id='+str(media['id']),headers={'Range':'bytes=0-15'})
+    check('authorized partial video streaming',status==206 and len(chunk)==16 and head.get('Content-Range','').startswith('bytes 0-15/'))
+    check('bad video range returns 416',patient.raw('media.php?id='+str(media['id']),headers={'Range':'bytes=9999999-'})[0]==416)
+    sid=patient.post('submission.create',{'assignment_id':1,'media_id':media['id'],'comment':'Test practice'},201)['id']
+    check('same video cannot be submitted twice',patient.post('submission.create',{'assignment_id':1,'media_id':media['id']},400)['ok'] is False)
+    xp=patient.get('dashboard')['stats']['xp'];myo.post('submission.review',{'id':sid,'status':'approved','comment':'Test approved'})
+    xp2=patient.get('dashboard')['stats']['xp']
+    check('approval awards XP',xp2==xp+25)
+    check('double review blocked',myo.post('submission.review',{'id':sid,'status':'approved'},409)['ok'] is False)
+    check('double review does not award again',patient.get('dashboard')['stats']['xp']==xp2)
+    media2=patient.upload('practice-2.mp4',video,'video',mime='video/mp4')
+    sid2=patient.post('submission.create',{'assignment_id':3,'media_id':media2['id']},201)['id']
+    check('retry needs useful comment',myo.post('submission.review',{'id':sid2,'status':'retry'},400)['ok'] is False)
+    myo.post('submission.review',{'id':sid2,'status':'retry','comment':'Test correction'})
+    check('patient receives review feedback',any(n['type']=='review' for n in patient.get('notifications')))
+    check('PHP disguised as image is rejected',ortho.upload('fake.jpg',b'<?php echo 1; ?>','photo',6,mime='image/jpeg',expected=400)['ok'] is False)
+    check('SVG upload is rejected',ortho.upload('unsafe.svg',b'<svg xmlns="http://www.w3.org/2000/svg"></svg>','photo',6,mime='image/svg+xml',expected=400)['ok'] is False)
+    image=(ROOT/'demo/demo-photo-before.webp').read_bytes()
+    check('ENT cannot add photo',ent.upload('photo.webp',image,'photo',6,mime='image/webp',expected=403)['ok'] is False)
+    photo=ortho.upload('photo.webp',image,'photo',6,mime='image/webp')
+    check('orthodontist photo + patient progress',any(int(p['id'])==photo['id'] for p in patient.get('progress')['photos']))
+    check('photo hidden from another patient',other.raw('media.php?id='+str(photo['id']))[0]==403)
+    visit=myo.post('visit.create',{'patient_id':6,'date':'2026-10-12','time':'14:30','diagnosis':'Test diagnosis','appliance':'Test appliance','method':'Test method','recommendations':'Test recommendation','treatment_plan':'Test plan'},201)
+    check('visit persisted in team history',any(int(v['id'])==visit['id'] for v in ortho.get('doctor.patient',id=6)['visits']))
+    check('invalid date rejected',myo.post('visit.create',{'patient_id':6,'date':'2026-02-30','diagnosis':'Test'},400)['ok'] is False)
+    patient.post('messages.send',{'recipient_id':2,'body':'Test question'},201)
+    check('team message persisted',any(m['body']=='Test question' for m in myo.get('messages',patient_id=6,**{'with':6})))
+    check('patient cannot message unrelated doctor',patient.post('messages.send',{'recipient_id':5,'body':'Test'},403)['ok'] is False)
+    myo.post('messages.send',{'patient_id':6,'recipient_id':6,'body':'Test answer'},201)
+    check('doctor answer visible to patient',any(m['body']=='Test answer' for m in patient.get('messages',**{'with':2})))
+    patient.post('report.send',{'period':'week'})
+    check('report notification delivered internally',any(n['type']=='report' for n in myo.get('notifications')))
+    monthly=patient.post('report.send',{'period':'month'})
+    check('report period and activity count retained',monthly['period']=='month' and monthly['count']>=9 and any(n['type']=='report' and 'period=month' in n['link'] for n in myo.get('notifications')))
+    status,head,csv=patient.raw('report.php?period=week')
+    check('CSV report is UTF-8 and downloadable',status==200 and csv.startswith(b'\xef\xbb\xbf') and 'text/csv' in head.get('Content-Type',''))
+    fresh=Client();registration=fresh.post('auth.register',{'role':'patient','name':'Test Fresh','email':'fresh@example.test','password':'MyoDemo!2026','consent':True})
+    fresh_id=registration['user']['id'];fresh.post('team.request',{'doctor_id':2})
+    check('request does not auto-expose history',len(fresh.get('team'))==0)
+    req=next(r for r in myo.get('doctor.dashboard')['requests'] if int(r['patient_id'])==fresh_id)
+    myo.post('doctor.request.respond',{'id':req['id'],'accept':True})
+    check('confirmed patient request starts team',len(fresh.get('team'))==1)
+    created=myo.post('doctor.patient.add',{'name':'Test Invited','email':'invited@example.test','city':'Test'},201)
+    invite=Client();invite_login=invite.post('auth.login',{'email':created['email'],'password':created['temporary_password']})
+    check('doctor invitation temporary login works',invite_login['user']['id']==created['patient_id'])
+    attacker=Client();check('claimed invite cannot replace password',attacker.post('auth.register',{'role':'patient','name':'Replace','email':created['email'],'access_code':created['access_code'],'password':'OtherTestPass!','consent':True},400)['ok'] is False)
+    unverified=Client();reg=unverified.post('auth.register',{'role':'doctor','specialty':'myotherapist','name':'Test Doctor','email':'doctor@example.test','password':'MyoDemo!2026','consent':True})
+    doctor_id=reg['user']['id'];check('new doctor starts unverified',not reg['user']['verified'])
+    check('unverified doctor cannot add patient',unverified.post('doctor.patient.add',{'name':'Test','email':'no@example.test'},403)['ok'] is False)
+    check('verification requires qualification',admin.post('admin.user.save',{'id':doctor_id,'active':True,'verified':True},400)['ok'] is False)
+    diploma=unverified.upload('diploma.pdf',b'%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF','diploma',mime='application/pdf')
+    check('qualification owner and admin access',admin.raw('media.php?id='+str(diploma['id']))[0]==200 and ortho.raw('media.php?id='+str(diploma['id']))[0]==403)
+    admin.post('admin.user.save',{'id':doctor_id,'active':True,'verified':True})
+    check('verification persisted',unverified.get('auth.me')['user']['verified'])
+    check('patient cannot administer',patient.get('admin.dashboard',403)['ok'] is False)
+    exercise=admin.post('admin.exercise.save',{'planet_id':2,'title':'Test new exercise','description':'Test','steps':['One','Two'],'level':2,'duration_seconds':90,'active':True})
+    check('exercise library CRUD',any(int(e['id'])==exercise['id'] for e in admin.get('admin.dashboard')['exercises']))
+    page=admin.post('admin.page.save',{'slug':'test-page','title':'Test page','body':'Test content','menu_label':'Test menu','active':True,'sort_order':1})
+    check('content page/menu published in data',any(p['slug']=='test-page' for p in anon.get('public')['pages']))
+    check('unsafe external URL rejected',admin.post('admin.settings.save',{'shop_links':[{'title':'Bad','url':'javascript:alert(1)'}]},400)['ok'] is False)
+    admin.post('admin.settings.save',{'contact_email':'contact@example.test','shop_links':[{'title':'Test tool','url':'https://example.test/tool'}]})
+    check('public content edits persist',anon.get('public')['settings']['contact_email']=='contact@example.test')
+    admin.post('admin.planet.save',{'id':1,'title':'Вертикаль','subtitle':'Осанка','description':'Test planet description','color':'#7357e8','sort_order':1})
+    check('planet appearance editable',anon.get('public')['planets'][0]['color']=='#7357e8')
+    check('admin cannot deactivate self',admin.post('admin.user.save',{'id':1,'active':False},400)['ok'] is False)
+    fresh.post('account.update',{'name':'Test Fresh 2','phone':'123','city':'Test','clinic':'','about':'Test profile','contact_public':False,'clinics':[],'preferences':{'reminders':True,'email':False}})
+    check('profile updates persist',fresh.get('auth.me')['user']['name']=='Test Fresh 2')
+    fresh.post('account.password',{'current_password':'MyoDemo!2026','password':'NewTestPassword!2026'})
+    another=Client();check('changed password works',another.post('auth.login',{'email':'fresh@example.test','password':'NewTestPassword!2026'})['user']['id']==fresh_id)
+    admin.post('admin.user.save',{'id':fresh_id,'active':False})
+    check('deactivation terminates authorized access',fresh.get('dashboard',401)['ok'] is False)
+    for path in ['storage/files/example.mp4','app/bootstrap.php','database/seed.sql','config.local.php','tools/install.php']:
+        check('private web path blocked: '+path,anon.raw(path)[0]==403)
+    for path in ['assets/css/app.css','assets/js/app.js','assets/js/views-patient.js','assets/images/planet-breathing.webp','assets/demo-mission.mp4']:
+        check('deployment asset accessible: '+path,anon.raw(path)[0]==200)
+    php_files=list(ROOT.rglob('*.php'))
+    for f in php_files:subprocess.run(PHP+['-l',str(f)],capture_output=True,check=True)
+    check('all PHP files parse',True)
+    if os.environ.get('MYO_UI_TEST_COMMAND'):
+        ui_env=env.copy();ui_env['MYO_UI_BASE']=BASE
+        subprocess.run(shlex.split(os.environ['MYO_UI_TEST_COMMAND']),env=ui_env,check=True)
+    result={'ok':True,'checks':len(checks),'duration_seconds':round(time.time()-start,2),'database':'MariaDB / MySQL via PDO','tests':checks}
+    (RUNTIME/'report.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+    print(json.dumps({'ok':True,'checks':len(checks),'duration_seconds':result['duration_seconds']},ensure_ascii=False))
+except Exception:
+    (RUNTIME/'report.json').write_text(json.dumps({'ok':False,'passed':checks},ensure_ascii=False,indent=2))
+    raise
+finally:
+    server.terminate()
+    try:server.wait(timeout=5)
+    except subprocess.TimeoutExpired:server.kill()
+    log.close()

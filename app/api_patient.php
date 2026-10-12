@@ -59,8 +59,10 @@ function api_patient(string $action): bool {
     case 'report.send':
         write_guard(); $u=require_user(['patient']); $d=input();
         $period=value($d,'period',10,'week'); if(!in_array($period,['week','month'],true)) fail('Неверный период');
-        $s=stats((int)$u['id']); notify_team((int)$u['id'],'report','Отчёт о занятиях',$u['name'].': '.$s['today_count'].' занятий сегодня. Период: '.$period,'?page=patient&id='.$u['id'].'&tab=diary');
-        json_response(['message'=>'Отчёт доступен вашей команде врачей']);
+        $since=date('Y-m-d',strtotime($period==='week'?'-6 days':'-29 days'));
+        $count=(int)one('SELECT COUNT(*) n FROM practices WHERE patient_id=? AND practice_day>=?',[$u['id'],$since])['n'];
+        notify_team((int)$u['id'],'report','Отчёт о занятиях',$u['name'].': '.$count.' занятий. Период: '.$period,'?page=patient&id='.$u['id'].'&tab=diary&period='.$period);
+        json_response(['message'=>'Отчёт доступен вашей команде врачей','period'=>$period,'count'=>$count]);
     case 'team':
         $u=require_user(); $id=patient_id($u); patient_access($id,$u);
         json_response(array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active' AND u.active=1",[$id])));
