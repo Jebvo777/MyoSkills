@@ -15,9 +15,12 @@ function api_auth(string $action): bool {
         $u=one('SELECT * FROM users WHERE email=? AND active=1',[$email]);
         if(!$u || !password_verify($password,$u['password_hash'])){ insert('login_attempts',['identity_hash'=>$key,'attempted_at'=>now()]); fail('Неверная почта или пароль',401); }
         sql('DELETE FROM login_attempts WHERE identity_hash=?',[$key]);
-        session_regenerate_id(true); $_SESSION['uid']=(int)$u['id']; unset($_SESSION['csrf']);
         if($u['role']==='patient') sql('UPDATE patients SET claimed=1 WHERE user_id=?',[$u['id']]);
-        if(password_needs_rehash($u['password_hash'],PASSWORD_DEFAULT)) sql('UPDATE users SET password_hash=? WHERE id=?',[password_hash($password,PASSWORD_DEFAULT),$u['id']]);
+        if(password_needs_rehash($u['password_hash'],PASSWORD_DEFAULT)) {
+            $u['password_hash']=password_hash($password,PASSWORD_DEFAULT);
+            sql('UPDATE users SET password_hash=? WHERE id=?',[$u['password_hash'],$u['id']]);
+        }
+        sign_in($u);
         audit($u,'login'); json_response(['user'=>public_user($u,true),'csrf'=>csrf_token()]);
     case 'auth.logout':
         write_guard(); $_SESSION=[]; session_regenerate_id(true); json_response(['csrf'=>csrf_token()]);
@@ -46,7 +49,7 @@ function api_auth(string $action): bool {
             notification($id,'welcome',$role==='doctor'?'Добро пожаловать на борт, доктор':'Твоя галактика ждёт','Заполни профиль и начни знакомство с сервисом.','?page=profile');
             return $id;
         });
-        session_regenerate_id(true); $_SESSION['uid']=$id; unset($_SESSION['csrf']);
+        sign_in(one('SELECT * FROM users WHERE id=?',[$id]));
         json_response(['user'=>public_user(require_user(),true),'csrf'=>csrf_token()]);
     case 'auth.forgot':
         write_guard(); $d=input(); $email=mb_strtolower(required($d,'email',190));
@@ -83,7 +86,9 @@ function api_auth(string $action): bool {
         write_guard(); $u=require_user(); $d=input();
         if(!password_verify(required($d,'current_password',128),$u['password_hash'])) fail('Текущий пароль неверен');
         $p=required($d,'password',128); if(mb_strlen($p)<10) fail('Минимум 10 символов');
-        sql('UPDATE users SET password_hash=? WHERE id=?',[password_hash($p,PASSWORD_DEFAULT),$u['id']]);
+        $hash=password_hash($p,PASSWORD_DEFAULT);
+        sql('UPDATE users SET password_hash=? WHERE id=?',[$hash,$u['id']]);
+        $_SESSION['credential_tag']=hash('sha256',$hash);
         session_regenerate_id(true); audit($u,'password.change'); json_response(['message'=>'Пароль изменён']);
     case 'notifications':
         $u=require_user(); json_response(many('SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100',[$u['id']]));

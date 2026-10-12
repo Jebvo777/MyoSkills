@@ -48,11 +48,17 @@ function api_doctor(string $action): bool {
         $d=input(); $pid=ident($d['patient_id']??0); patient_access($pid,$u,true); $eid=ident($d['exercise_id']??0);
         if(!one('SELECT id FROM exercises WHERE id=? AND active=1',[$eid])) fail('Упражнение не найдено');
         $status=value($d,'status',20,'active'); if(!in_array($status,['active','paused','completed'],true)) fail('Неверный статус');
-        $a=one('SELECT * FROM assignments WHERE patient_id=? AND exercise_id=?',[$pid,$eid]);
-        if($a){ sql('UPDATE assignments SET status=?,instructions=?,doctor_id=?,days_per_week=? WHERE id=?',[$status,value($d,'instructions',3000),$u['id'],max(1,min(7,(int)($d['days_per_week']??7))),$a['id']]); $aid=(int)$a['id']; }
-        else $aid=insert('assignments',['patient_id'=>$pid,'exercise_id'=>$eid,'doctor_id'=>$u['id'],'status'=>$status,'instructions'=>value($d,'instructions',3000),'days_per_week'=>max(1,min(7,(int)($d['days_per_week']??7))),'created_at'=>now()]);
-        if($status==='active') notification($pid,'assignment','Новая миссия доступна','Миотерапевт обновил твой маршрут','?page=mission&id='.$aid);
-        audit($u,'assignment.save','assignment',$aid); json_response(['id'=>$aid]);
+        $instructions=value($d,'instructions',3000); $days=max(1,min(7,(int)($d['days_per_week']??7)));
+        $aid=transaction(function() use($pid,$eid,$u,$status,$instructions,$days){
+            one('SELECT user_id FROM patients WHERE user_id=?'.lock_suffix(),[$pid]);
+            patient_access($pid,$u,true);
+            $a=one('SELECT * FROM assignments WHERE patient_id=? AND exercise_id=?'.lock_suffix(),[$pid,$eid]);
+            if($a){ sql('UPDATE assignments SET status=?,instructions=?,doctor_id=?,days_per_week=? WHERE id=?',[$status,$instructions,$u['id'],$days,$a['id']]); $aid=(int)$a['id']; }
+            else $aid=insert('assignments',['patient_id'=>$pid,'exercise_id'=>$eid,'doctor_id'=>$u['id'],'status'=>$status,'instructions'=>$instructions,'days_per_week'=>$days,'created_at'=>now()]);
+            if($status==='active') notification($pid,'assignment','Новая миссия доступна','Миотерапевт обновил твой маршрут','?page=mission&id='.$aid);
+            audit($u,'assignment.save','assignment',$aid);
+            return $aid;
+        }); json_response(['id'=>$aid]);
     case 'submission.review':
         write_guard(); $u=require_user(['doctor']); if(!may_assign($u)) fail('Видео проверяет миотерапевт',403);
         $d=input(); $sid=ident($d['id']??0); $status=required($d,'status',20); if(!in_array($status,['approved','retry'],true)) fail('Неверный статус');

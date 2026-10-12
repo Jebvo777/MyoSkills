@@ -100,7 +100,20 @@ function write_guard(): void {
 }
 function user(): ?array {
     $id=$_SESSION['uid']??0;
-    return $id ? one('SELECT * FROM users WHERE id=? AND active=1',[(int)$id]) : null;
+    if(!$id) return null;
+    $u=one('SELECT * FROM users WHERE id=? AND active=1',[(int)$id]);
+    $tag=$_SESSION['credential_tag']??'';
+    if(!$u || !is_string($tag) || !hash_equals(hash('sha256',$u['password_hash']),$tag)) {
+        unset($_SESSION['uid'],$_SESSION['credential_tag']);
+        return null;
+    }
+    return $u;
+}
+function sign_in(array $u): void {
+    session_regenerate_id(true);
+    $_SESSION['uid']=(int)$u['id'];
+    $_SESSION['credential_tag']=hash('sha256',$u['password_hash']);
+    unset($_SESSION['csrf']);
 }
 function require_user(array $roles = []): array {
     $u=user(); if(!$u) fail('Войдите в аккаунт',401);
@@ -160,12 +173,12 @@ function stats(int $id): array {
 }
 function settings(): array { $out=[]; foreach(many('SELECT * FROM app_settings') as $r) $out[$r['setting_key']]=$r['setting_value']; return $out; }
 function media_allowed(array $m,array $u): bool {
-    if($u['role']==='admin' || (int)$m['owner_id']===(int)$u['id']) return true;
+    if($u['role']==='admin') return true;
+    if($m['category']==='diploma') return $u['role']==='doctor' && (int)$m['owner_id']===(int)$u['id'];
     if($m['category']==='exercise') {
         if($u['role']==='doctor') return (bool)$u['verified'];
         return (bool)one('SELECT a.id FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.patient_id=? AND e.video_media_id=? AND a.status=?',[$u['id'],$m['id'],'active']);
     }
-    if($m['category']==='diploma') return false;
     if($m['patient_id']) { try { patient_access((int)$m['patient_id'],$u); return true; } catch(ApiError){ return false; } }
     return false;
 }

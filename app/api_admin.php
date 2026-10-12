@@ -38,6 +38,7 @@ function api_admin(string $action): bool {
         audit($u,'admin.planet.save','planet',$id); json_response(['id'=>$id]);
     case 'admin.settings.save':
         write_guard(); $d=input(); $keys=['about','contact_email','contact_phone','legal_company','shop_links','services','faq','tariffs_message','landing_title'];
+        $values=[];
         foreach($d as $key=>$v){
             if(!in_array($key,$keys,true)) continue;
             if(in_array($key,['shop_links','services','faq'],true)) {
@@ -45,10 +46,15 @@ function api_admin(string $action): bool {
                 if($key==='shop_links') foreach($v as $item){$parsed=parse_url((string)($item['url']??''));if(!is_array($parsed)||!in_array($parsed['scheme']??'', ['http','https'],true)||empty($parsed['host']))fail('Ссылка должна начинаться с https:// или http://');}
                 $v=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
             } else $v=value([$key=>$v],$key,15000);
-            if(one('SELECT setting_key FROM app_settings WHERE setting_key=?',[$key])) sql('UPDATE app_settings SET setting_value=? WHERE setting_key=?',[$v,$key]);
-            else insert('app_settings',['setting_key'=>$key,'setting_value'=>$v]);
+            if(strlen($v)>60000) fail('Слишком большой блок контента: '.$key);
+            $values[$key]=$v;
         }
-        audit($u,'admin.settings.save'); json_response(['message'=>'Контент сохранён']);
+        transaction(function() use($values,$u){
+            foreach($values as $key=>$v) {
+                sql('INSERT INTO app_settings (setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=?',[$key,$v,$v]);
+            }
+            audit($u,'admin.settings.save');
+        }); json_response(['message'=>'Контент сохранён']);
     }
     fail('Действие администратора не найдено',404);
 }
