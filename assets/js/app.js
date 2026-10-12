@@ -1,10 +1,10 @@
-import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js';
-import {localizeStatic} from './i18n.js';
-import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js';
-import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js';
-import {doctorView,patientRecordView,adminView} from './views-clinical.js';
-import {selectStory} from './views-extra.js';
-import {initSpace,focusPlanet} from './space.js';
+import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261012-cockpit';
+import {localizeStatic} from './i18n.js?v=20261012-cockpit';
+import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261012-cockpit';
+import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261012-cockpit';
+import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261012-cockpit';
+import {selectStory} from './views-extra.js?v=20261012-cockpit';
+import {initSpace,focusPlanet} from './space.js?v=20261012-cockpit';
 
 const protectedPages=['dashboard','galaxy','mission','diary','progress','team','messages','profile','doctor','patient','admin'];
 let renderSequence=0;
@@ -19,6 +19,7 @@ async function render(route=routeFromLocation()){
  const seq=++renderSequence;resetPage();route.page||='home';state.route=route;setLang(lang());applyMotion();
  if(protectedPages.includes(route.page)&&!state.user){history.replaceState({},'',href('login'));state.route={page:'login'};route=state.route;}
  if(state.user&&['login','register'].includes(route.page)){history.replaceState({},'',href(homeForRole()));route={page:homeForRole()};state.route=route;}
+ document.body.dataset.page=route.page;document.body.dataset.role=state.user?.role||'visitor';
  $('#app').classList.add('rendering');let html;
  try{
   switch(route.page){

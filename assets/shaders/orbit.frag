@@ -51,7 +51,7 @@ void main(){
  vec3 ro=vec3(0.0,0.0,10.0),rd=normalize(vec3((uv*2.0-1.0)*vec2(aspect,1.0)*.58,-1.0));
  float best=1000.0,radius=.70,kind=0.0,major=.97,tube=.037;int index=1;vec3 center=vec3(0.0);
  for(int i=0;i<6;i++){
-  if(uHero>.5&&i!=1)continue;
+  if(uHero>.5&&abs(float(i)-uSelected)>.2)continue;
   vec3 c=uHero>.5?vec3(0.0,.12,0.0):centerFor(i);float r=uHero>.5?2.05:.70;
   float s=sphere(ro,rd,c,r);if(s<best){best=s;kind=0.0;index=i;center=c;radius=r;}
   float ma=uHero>.5?2.78:.98,tu=uHero>.5?.09:.037;
@@ -66,8 +66,15 @@ void main(){
   float diffuse=max(dot(n,light),0.0),rim=pow(1.0-max(dot(n,-rd),0.0),3.0);
   float shine=pow(max(dot(reflect(-light,n),-rd),0.0),48.0);
   color=base*(.25+diffuse*.78)+vec3(.94,.97,1.0)*shine*.48+uColors[index]*rim*.30;
+  if(kind<.5){
+   vec3 q=(p-center)/radius;q.xz=turn(uTime*.08+float(index))*q.xz;
+   float longitude=atan(q.z,q.x),latitude=asin(clamp(q.y,-1.0,1.0));
+   float mesh=1.0-smoothstep(.04,.13,min(abs(sin(longitude*18.0)),abs(sin(latitude*14.0))));
+   color=uColors[index]*(.10+diffuse*.17+mesh*.85)+uColors[index]*rim*.62;
+   alpha=.26+.74*max(mesh,rim*.65);
+  }
   if(uHero<.5&&abs(float(index)-uSelected)<.2)color+=uColors[index]*rim*.3;
-  alpha=1.0;
+  if(kind>.5)alpha=1.0;
  }
  if(uHero<.5&&uRocket.w>.01){
   vec2 rpos=uRocket.xy*2.0-1.0;vec3 c=vec3(rpos.x*aspect*5.8,rpos.y*5.8,1.0);

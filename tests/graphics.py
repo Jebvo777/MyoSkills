@@ -52,7 +52,7 @@ for mode in (1,0):
     data=(C.c_ubyte*(W*H*4))();read(0,0,W,H,0x1908,0x1401,data)
     img=Image.frombytes('RGBA',(W,H),bytes(data)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
     assert sum(img.getchannel('A').histogram()[231:])>5000
-    bg=Image.new('RGBA',(W,H),(248,249,254,255) if mode else (23,27,54,255));bg.alpha_composite(img);frames.append(bg.convert('RGB'))
+    bg=Image.new('RGBA',(W,H),(5,9,20,255));bg.alpha_composite(img);frames.append(bg.convert('RGB'))
     bg.convert('RGB').save(OUT/('3d-hero.png' if mode else '3d-galaxy.png'))
 gallery=Image.new('RGB',(W*2,H));gallery.paste(frames[0],(0,0));gallery.paste(frames[1],(W,0));gallery.save(OUT/'3d-gallery.png')
 result={'ok':True,'shader_compilation':True,'program_linking':True,'rendered_scenes':2,'environment':'Mesa EGL GLES2 software rendering; not a browser screenshot'}

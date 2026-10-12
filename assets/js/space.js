@@ -1,4 +1,4 @@
-import {state,asset,$$, $} from './core.js';
+import {state,asset,$$, $} from './core.js?v=20261012-cockpit';
 let shaderFiles;
 const positions=[[.19,.75],[.51,.84],[.82,.68],[.74,.28],[.40,.17],[.15,.33]];
 const rgb=hex=>{const v=parseInt(String(hex).replace('#',''),16);return [(v>>16&255)/255,(v>>8&255)/255,(v&255)/255];};
@@ -12,7 +12,7 @@ async function mount(canvas){
  let disposed=false,raf=0,program,buffer,ro,observer;const parent=canvas.parentElement;
  const clean=()=>{disposed=true;cancelAnimationFrame(raf);ro?.disconnect();observer?.disconnect();window.removeEventListener('myo:planet',focus);document.removeEventListener('visibilitychange',visibility);parent.removeEventListener('pointermove',move);parent.removeEventListener('pointerleave',leave);canvas.removeEventListener('webglcontextlost',lost);if(program)gl.deleteProgram(program);if(buffer)gl.deleteBuffer(buffer);parent.classList.remove('space-ready');};
  state.cleanup.push(clean);
- let pointer=[0,0],selected=1,current=[...positions[1]],start=[...current],target=[...current],started=0,last=0,visible=true;
+ let pointer=[0,0],selected=Number(canvas.dataset.planetIndex??1),current=[...positions[1]],start=[...current],target=[...current],started=0,last=0,visible=true;
  const focus=e=>{selected=Math.max(0,Math.min(5,Number(e.detail.id)-1));start=[...current];target=[...positions[selected]];started=performance.now();draw(performance.now(),true);};
  const move=e=>{const r=canvas.getBoundingClientRect();pointer=[(e.clientX-r.left)/Math.max(1,r.width)*2-1,(e.clientY-r.top)/Math.max(1,r.height)*2-1];if(document.documentElement.dataset.motion==='off')draw(performance.now(),true);};
  const leave=()=>{pointer=[0,0];};

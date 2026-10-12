@@ -1,11 +1,11 @@
-import {icon} from './icons.js';
-import {t,lang,setLang} from './i18n.js';
+import {icon} from './icons.js?v=20261012-cockpit';
+import {t,lang,setLang} from './i18n.js?v=20261012-cockpit';
 export {icon,t,lang,setLang};
 export const state={...window.MYO_BOOT,public:null,dashboard:null,route:{},navigate:null,cleanup:[],modalCleanup:null};
 export const $=(selector,root=document)=>root.querySelector(selector);
 export const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const asset=p=>`${state.base}/${String(p||'').replace(/^\//,'')}`;
+export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261012-cockpit')}`:''}`;};
 export const href=(page,params={})=>`${state.base}/index.php?${new URLSearchParams({page,...params})}`;
 export const go=(page,params={},flight=false)=>state.navigate(page,params,flight);
 export const fmtDate=(v,full=false)=>v?new Date(String(v).replace(' ','T')).toLocaleDateString(lang()==='en'?'en-GB':'ru-RU',{day:'numeric',month:'short',...(full?{year:'numeric'}:{})}):'—';
@@ -66,10 +66,24 @@ export function baseEffects(){
  $$('.star-canvas').forEach(startStars);
 }
 function startStars(canvas){
- const ctx=canvas.getContext('2d');if(!ctx)return;let frame=0,raf=0,width=1,height=1;
- const particles=Array.from({length:95},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.6+.3,s:Math.random()*.3+.05}));
- const resize=()=>{const r=canvas.getBoundingClientRect();width=r.width;height=r.height;canvas.width=width*Math.min(devicePixelRatio,2);canvas.height=height*Math.min(devicePixelRatio,2);ctx.setTransform(Math.min(devicePixelRatio,2),0,0,Math.min(devicePixelRatio,2),0,0);};
- const ro=new ResizeObserver(resize);ro.observe(canvas);resize();
- const draw=()=>{ctx.clearRect(0,0,width,height);particles.forEach(p=>{const alpha=.3+Math.sin(frame*.01+p.x*12)*.25;ctx.fillStyle=`rgba(221,227,243,${alpha})`;ctx.beginPath();ctx.arc(p.x*width,(p.y*height+frame*p.s*.04)%height,p.r,0,Math.PI*2);ctx.fill();});frame++;if(document.documentElement.dataset.motion!=='off')raf=requestAnimationFrame(draw);};draw();
- state.cleanup.push(()=>{cancelAnimationFrame(raf);ro.disconnect();});
+ const ctx=canvas.getContext('2d');if(!ctx)return;
+ const global=canvas.dataset.starfield==='global';let raf=0,width=1,height=1,last=0,disposed=false;
+ const random=i=>{const n=Math.sin(i*127.1+311.7)*43758.5453;return n-Math.floor(n);};
+ const particles=Array.from({length:global?230:95},(_,i)=>({x:random(i*6+1),y:random(i*6+2),r:random(i*6+3)*(global?1.15:1.2)+.35,phase:random(i*6+4)*6.28,speed:random(i*6+5)*.3+.16}));
+ const resize=()=>{const r=canvas.getBoundingClientRect();width=Math.max(1,r.width);height=Math.max(1,r.height);const ratio=Math.min(devicePixelRatio||1,1.5);canvas.width=width*ratio;canvas.height=height*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);draw(performance.now(),true);};
+ function draw(time=0,force=false){
+  if(disposed)return;if(force&&raf)cancelAnimationFrame(raf);raf=0;
+  const moving=document.documentElement.dataset.motion!=='off';
+  if(!force&&time-last<32){raf=requestAnimationFrame(draw);return;}last=time;const phase=moving?time/1000:0;
+  ctx.clearRect(0,0,width,height);
+  if(global){ctx.beginPath();particles.slice(0,27).forEach((p,i)=>{particles.slice(i+1,27).forEach(q=>{if(Math.hypot(p.x-q.x,p.y-q.y)<.12){ctx.moveTo(p.x*width,p.y*height);ctx.lineTo(q.x*width,q.y*height);}});});ctx.strokeStyle='rgba(97,225,202,.065)';ctx.lineWidth=.65;ctx.stroke();}
+  particles.forEach(p=>{const alpha=.16+(Math.sin(phase*p.speed+p.phase)*.5+.5)*.56,x=p.x*width,y=p.y*height;
+   if(global&&p.r>1.15){const glow=ctx.createRadialGradient(x,y,0,x,y,p.r*6);glow.addColorStop(0,`rgba(97,225,202,${alpha*.45})`);glow.addColorStop(1,'rgba(97,225,202,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,y,p.r*6,0,Math.PI*2);ctx.fill();}
+   ctx.fillStyle=`rgba(${p.phase>4.9?'238,214,157':'169,219,231'},${alpha})`;ctx.beginPath();ctx.arc(x,y,p.r,0,Math.PI*2);ctx.fill();
+  });
+  if(moving&&!document.hidden)raf=requestAnimationFrame(draw);
+ }
+ const ro=new ResizeObserver(resize);ro.observe(canvas);
+ const visibility=()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0;}else draw(performance.now(),true);};document.addEventListener('visibilitychange',visibility);resize();
+ state.cleanup.push(()=>{disposed=true;cancelAnimationFrame(raf);ro.disconnect();document.removeEventListener('visibilitychange',visibility);});
 }

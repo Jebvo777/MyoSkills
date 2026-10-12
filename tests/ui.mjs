@@ -28,17 +28,20 @@ const click=s=>{const el=$(s);if(!el)throw Error('Element absent: '+s);el.click(
 const change=(s,value,event='input')=>{const el=$(s);if(!el)throw Error('Element absent: '+s);el.value=value;el.dispatchEvent(new window.Event(event,{bubbles:true}));};
 const submit=s=>$(s).dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
 await import('../assets/js/app.js');
-const core=await import('../assets/js/core.js');
+const core=await import('../assets/js/core.js?v=20261012-cockpit');
 try{
  await wait(()=>$('.landing-hero'),'landing');
  check('landing renders with six interactive planets',$$('.planet-node').length===6);
- check('generated art integrated',$('.hero-orbit').getAttribute('src').endsWith('hero-orbit.webp'));
- check('WebGL scenes have illustration fallback',$$('.webgl-scene').length===2&&!!$('.hero-orbit'));
+ check('neon dental art integrated',new URL($('.hero-orbit').getAttribute('src'),base).pathname.endsWith('hologram-jaw.webp'));
+ check('galaxy WebGL has illustration fallback',$$('.webgl-scene').length===1&&!!$('.orbit-map .planet-node img'));
+ check('global starfield persists outside route content',!!$('.space-backdrop .global-starfield')&&!$('#app').contains($('.global-starfield')));
+ check('five-stage tooth constellation routes to real pages',$$('.stellar-stage [data-nav]').length===5&&new URL($('.stellar-tooth').getAttribute('src'),base).pathname.endsWith('tooth-constellation.webp'));
+ const darkStyle=$('link[href*="/dark-space.css?"]');check('dark theme is last stylesheet',darkStyle&&[...document.querySelectorAll('link[rel="stylesheet"]')].at(-1)===darkStyle);
  change('#jaw-slider','75');check('interactive jaw model responds',$('#jaw-percentage').textContent==='75%'&&$$('.model-tooth').length===24);
  click('[data-action="story-step"][data-index="2"]');check('companion story steps respond',$('#story-title').textContent==='Топливо для следующего шага');
  check('CMS services and moderated feedback sections present',$$('.service-card').length===3&&!!$('.testimonial-section'));
  click('.planet-node[data-id="1"]');check('planet selection updates content',$('#public-planet-detail h3').textContent==='Вертикаль');
- click('[data-action="language"]');await wait(()=>document.documentElement.lang==='en'&&$('.hero-copy h1')?.textContent.includes('Your galaxy'),'English landing');
+ click('[data-action="language"]');await wait(()=>document.documentElement.lang==='en'&&$('.hero-copy h1')?.textContent.includes('Inspired by science'),'English landing');
  check('English public navigation',$('.desktop-nav').textContent.includes('How it works'));
  await core.go('about');check('English about content from CMS',$('.about-hero').textContent.includes('MyoSkills connects at-home'));
  await core.go('contacts');check('dedicated contacts page renders',$('.contact-panel').textContent.includes('contact@example.test'));
@@ -47,8 +50,12 @@ try{
  await core.go('specialists');check('specialist directory renders',$$('.specialist-card').length>=4);
  change('#specialist-search','zzzz');check('directory search empty state',$('.specialist-grid').textContent.includes('Ничего не найдено'));
  change('#specialist-search','');change('#specialist-type','ent','change');check('specialty filter applied',$$('.specialist-card').length===1);
- await core.go('login');change('#auth-form [name=email]','alex@myoskills.test');change('#auth-form [name=password]','MyoDemo!2026');submit('#auth-form');
+ await core.go('login');check('login contains airlock entrance',!!$('.airlock-portal')&&!!$('#auth-form'));change('#auth-form [name=email]','alex@myoskills.test');change('#auth-form [name=password]','MyoDemo!2026');submit('#auth-form');
  await wait(()=>$('.dashboard-feature'),'patient login');check('patient login renders dashboard',core.state.user.role==='patient'&&$$('.mission-card').length>=6);
+ check('cockpit instruments show patient fuel and XP',$('.fuel-readout strong').textContent===String(core.state.dashboard.stats.fuel)+'FL'&&$('.pilot-dial strong').textContent===String(core.state.dashboard.stats.xp));
+ check('cockpit provides four working console routes',$$('.cockpit-controls [data-nav]').map(el=>el.dataset.nav).join(',')==='galaxy,diary,progress,team'&&!!$('.canopy-frame')&&!!$('.pilot-windshield canvas'));
+ const next=core.state.dashboard.missions.find(m=>m.status==='active'&&!Number(m.done_today))||core.state.dashboard.missions.find(m=>m.status==='active');
+ check('cockpit targets the assigned mission and planet',!next||($('.pilot-target [data-nav="mission"]').dataset.id===String(next.id)&&Number($('.viewport-globe canvas').dataset.planetIndex)===core.state.dashboard.planets.findIndex(p=>p.slug===next.slug)));
  await core.go('galaxy');check('patient galaxy detail present',!!$('#patient-planet-detail .detail-mission'));
  click('.planet-node[data-id="1"]');check('patient planet selects own assignments',$('#patient-planet-detail h2').textContent==='Вертикаль');
  await core.go('mission',{id:1});check('mission video and timer wired',!!$('#example-video')&&$('#timer-minutes').textContent==='01');
