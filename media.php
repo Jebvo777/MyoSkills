@@ -5,7 +5,7 @@ try {
     $u=require_user(); $id=ident($_GET['id']??0); $m=one('SELECT * FROM media WHERE id=?',[$id]);
     if(!$m||!media_allowed($m,$u)) fail('Файл недоступен',403);
     $path=MYO_ROOT.'/storage/files/'.basename($m['stored_name']);
-    if(!is_file($path)&&config('demo_labels')&&preg_match('/^demo-photo-(before|after)\.png$/',$m['stored_name'])) $path=MYO_ROOT.'/demo/'.$m['stored_name'];
+    if(!is_file($path)&&config('demo_labels')&&preg_match('/^(demo-photo-(before|after)\.webp|demo-video\.mp4)$/',$m['stored_name'])) $path=MYO_ROOT.'/demo/'.$m['stored_name'];
     if(!is_file($path)) fail('Файл отсутствует в хранилище',404);
     session_write_close();
     $size=filesize($path); $start=0; $end=$size-1;

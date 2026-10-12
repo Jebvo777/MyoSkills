@@ -4,7 +4,7 @@ function api_auth(string $action): bool {
     switch($action) {
     case 'public':
         $doctors=array_map(fn($r)=>public_user($r),many("SELECT * FROM users WHERE role='doctor' AND verified=1 AND active=1 ORDER BY name"));
-        json_response(['planets'=>many('SELECT * FROM planets ORDER BY sort_order'), 'specialists'=>$doctors,'settings'=>settings(),'demo_labels'=>(bool)config('demo_labels')]);
+        json_response(['planets'=>many('SELECT * FROM planets ORDER BY sort_order'), 'specialists'=>$doctors,'settings'=>settings(),'pages'=>many('SELECT * FROM content_pages WHERE active=1 ORDER BY sort_order'),'demo_labels'=>(bool)config('demo_labels')]);
     case 'auth.me':
         $u=user(); json_response(['user'=>$u?public_user($u,true):null,'csrf'=>csrf_token()]);
     case 'auth.login':
@@ -16,6 +16,7 @@ function api_auth(string $action): bool {
         if(!$u || !password_verify($password,$u['password_hash'])){ insert('login_attempts',['identity_hash'=>$key,'attempted_at'=>now()]); fail('Неверная почта или пароль',401); }
         sql('DELETE FROM login_attempts WHERE identity_hash=?',[$key]);
         session_regenerate_id(true); $_SESSION['uid']=(int)$u['id']; unset($_SESSION['csrf']);
+        if($u['role']==='patient') sql('UPDATE patients SET claimed=1 WHERE user_id=?',[$u['id']]);
         if(password_needs_rehash($u['password_hash'],PASSWORD_DEFAULT)) sql('UPDATE users SET password_hash=? WHERE id=?',[password_hash($password,PASSWORD_DEFAULT),$u['id']]);
         audit($u,'login'); json_response(['user'=>public_user($u,true),'csrf'=>csrf_token()]);
     case 'auth.logout':

@@ -1,0 +1,151 @@
+{
+  "generator": "built-in image_gen",
+  "palette": [
+    "#f8f9fe",
+    "#dde3f3",
+    "#abb5ce",
+    "#7357e8",
+    "#61e1ca",
+    "#171b36",
+    "#303650",
+    "#5f6982"
+  ],
+  "assets": [
+    {
+      "file": "companion.png",
+      "width": 1222,
+      "height": 1287,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1056355,
+      "sha256": "fecdcef80ea07a1ea616a4a95ee1170b407316fad70f3d17633ba09c1647b50a"
+    },
+    {
+      "file": "hero-orbit.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGB",
+      "alpha_extrema": null,
+      "corner_alpha": null,
+      "bytes": 1725619,
+      "sha256": "327a9e28fc17a18d88f063c4eb2401914d22e9d529603d006b245619debd8224"
+    },
+    {
+      "file": "planet-breathing.png",
+      "width": 1312,
+      "height": 1199,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1612004,
+      "sha256": "bacaef91bb736fd7a293a8053819f0cddabd835cb0b81f869ae7e2872daa6e61"
+    },
+    {
+      "file": "planet-chewing.png",
+      "width": 1374,
+      "height": 1145,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1649172,
+      "sha256": "f3405e4e784d15a2fd590ba43ac5072232fff832be21a886a1c0131bd36c0239"
+    },
+    {
+      "file": "planet-lips.png",
+      "width": 1278,
+      "height": 1230,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1737284,
+      "sha256": "c2f694095ac580871c0bc915e42ffc71982bb4c8c2804eccd359b42e2fd0877d"
+    },
+    {
+      "file": "planet-posture.png",
+      "width": 1261,
+      "height": 1247,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1048797,
+      "sha256": "b52158206e382227d044144f6e9f16f01f36931c6dd25779e296fbffe7b7e24c"
+    },
+    {
+      "file": "planet-swallowing.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        254
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 2132984,
+      "sha256": "c201bd76f8e8da9d5c20ef3b8d501218ea177465a0e1065ead41a9441a3ce51b"
+    },
+    {
+      "file": "planet-tongue.png",
+      "width": 1312,
+      "height": 1199,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bytes": 1485810,
+      "sha256": "d03cf83a778e4e35b339d304ff8c26685277d24aef0e3339649819253fc2d848"
+    }
+  ]
+}

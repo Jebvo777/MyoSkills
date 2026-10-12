@@ -1,0 +1,50 @@
+[
+  {
+    "file": "planet-tongue.webp",
+    "size_bytes": 215038,
+    "width": 1312,
+    "height": 1199
+  },
+  {
+    "file": "planet-breathing.webp",
+    "size_bytes": 228050,
+    "width": 1312,
+    "height": 1199
+  },
+  {
+    "file": "planet-lips.webp",
+    "size_bytes": 237992,
+    "width": 1278,
+    "height": 1230
+  },
+  {
+    "file": "planet-posture.webp",
+    "size_bytes": 193416,
+    "width": 1261,
+    "height": 1247
+  },
+  {
+    "file": "planet-swallowing.webp",
+    "size_bytes": 268140,
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "file": "planet-chewing.webp",
+    "size_bytes": 287080,
+    "width": 1374,
+    "height": 1145
+  },
+  {
+    "file": "companion.webp",
+    "size_bytes": 128444,
+    "width": 1222,
+    "height": 1287
+  },
+  {
+    "file": "hero-orbit.webp",
+    "size_bytes": 73904,
+    "width": 1600,
+    "height": 900
+  }
+]
