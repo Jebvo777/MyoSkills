@@ -4,7 +4,7 @@ function api_auth(string $action): bool {
     switch($action) {
     case 'public':
         $doctors=array_map(fn($r)=>public_user($r),many("SELECT * FROM users WHERE role='doctor' AND verified=1 AND active=1 ORDER BY name"));
-        json_response(['planets'=>many('SELECT * FROM planets ORDER BY sort_order'), 'specialists'=>$doctors,'settings'=>settings(),'pages'=>many('SELECT * FROM content_pages WHERE active=1 ORDER BY sort_order'),'demo_labels'=>(bool)config('demo_labels')]);
+        json_response(['planets'=>many('SELECT * FROM planets ORDER BY sort_order'), 'specialists'=>$doctors,'settings'=>settings(),'pages'=>many('SELECT * FROM content_pages WHERE active=1 ORDER BY sort_order'),'documents'=>many("SELECT id,original_name,note,mime_type FROM media WHERE category='site' AND is_public=1 ORDER BY id DESC"),'testimonials'=>many("SELECT t.id,t.author_name,t.rating,t.body,t.is_demo,t.created_at FROM testimonials t JOIN users u ON u.id=t.patient_id WHERE t.status='approved' AND u.active=1 ORDER BY t.id DESC LIMIT 20"),'demo_labels'=>(bool)config('demo_labels')]);
     case 'auth.me':
         $u=user(); json_response(['user'=>$u?public_user($u,true):null,'csrf'=>csrf_token()]);
     case 'auth.login':
@@ -44,7 +44,8 @@ function api_auth(string $action): bool {
                 return (int)$existing['id'];
             }
             if($code) fail('Код приглашения и почта должны совпадать с данными, которые внёс врач');
-            $id=insert('users',['email'=>$email,'password_hash'=>password_hash($password,PASSWORD_DEFAULT),'name'=>$name,'role'=>$role,'specialty'=>$role==='doctor'?$spec:'','phone'=>value($d,'phone',40),'city'=>value($d,'city',100),'clinic'=>value($d,'clinic',180),'about'=>'','consent_at'=>now(),'created_at'=>now()]);
+            $clinics=profile_clinics($d['clinics']??[]);
+            $id=insert('users',['email'=>$email,'password_hash'=>password_hash($password,PASSWORD_DEFAULT),'name'=>$name,'role'=>$role,'specialty'=>$role==='doctor'?$spec:'','phone'=>value($d,'phone',40),'city'=>value($d,'city',100),'clinic'=>value($d,'clinic',180),'clinics_json'=>json_encode($clinics,JSON_UNESCAPED_UNICODE),'social_url'=>http_url(value($d,'social_url',255)),'about'=>'','consent_at'=>now(),'created_at'=>now()]);
             if($role==='patient') insert('patients',['user_id'=>$id,'access_code'=>'MYO-'.strtoupper(bin2hex(random_bytes(12))),'claimed'=>1,'started_at'=>today()]);
             notification($id,'welcome',$role==='doctor'?'Добро пожаловать на борт, доктор':'Твоя галактика ждёт','Заполни профиль и начни знакомство с сервисом.','?page=profile');
             return $id;
@@ -76,11 +77,14 @@ function api_auth(string $action): bool {
         }); json_response(['message'=>'Пароль изменён. Войдите с новым паролем.']);
     case 'account.update':
         write_guard(); $u=require_user(); $d=input();
-        $clinics=$d['clinics']??[]; if(!is_array($clinics)||count($clinics)>10) fail('Не более 10 клиник');
-        $clinics=array_map(fn($s)=>mb_substr(trim((string)$s),0,180),$clinics);
+        $clinics=profile_clinics($d['clinics']??[]);
         $pref=$d['preferences']??[]; if(!is_array($pref)) fail('Неверные настройки');
-        $preferences=['email'=>!empty($pref['email']),'reminders'=>!empty($pref['reminders']),'reduced_motion'=>!empty($pref['reduced_motion']),'language'=>($pref['language']??'ru')==='en'?'en':'ru'];
-        sql('UPDATE users SET name=?,phone=?,city=?,clinic=?,about=?,contact_public=?,clinics_json=?,preferences_json=? WHERE id=?',[required($d,'name',160),value($d,'phone',40),value($d,'city',100),value($d,'clinic',180),value($d,'about',3000),!empty($d['contact_public'])?1:0,json_encode($clinics,JSON_UNESCAPED_UNICODE),json_encode($preferences),$u['id']]);
+        $preferences=['email'=>!empty($pref['email']),'reminders'=>!empty($pref['reminders']),'reduced_motion'=>!empty($pref['reduced_motion']),'voice_instructions'=>!empty($pref['voice_instructions']),'language'=>($pref['language']??'ru')==='en'?'en':'ru'];
+        foreach(['public_email','public_phone','public_social'] as $key)$preferences[$key]=!array_key_exists($key,$pref)||!empty($pref[$key]);
+        $lat=$u['role']==='doctor'?coordinate($d['latitude']??$u['latitude'],90):null;
+        $lng=$u['role']==='doctor'?coordinate($d['longitude']??$u['longitude'],180):null;
+        if(($lat===null)!==($lng===null)) fail('Укажите широту и долготу вместе');
+        sql('UPDATE users SET name=?,phone=?,city=?,clinic=?,about=?,social_url=?,education=?,hobbies=?,latitude=?,longitude=?,contact_public=?,clinics_json=?,preferences_json=? WHERE id=?',[required($d,'name',160),value($d,'phone',40),value($d,'city',100),value($d,'clinic',180),value($d,'about',3000),http_url(value($d,'social_url',255)),$u['role']==='doctor'?value($d,'education',4000):'',value($d,'hobbies',500),$lat,$lng,!empty($d['contact_public'])?1:0,json_encode($clinics,JSON_UNESCAPED_UNICODE),json_encode($preferences),$u['id']]);
         audit($u,'profile.update'); json_response(public_user(require_user(),true));
     case 'account.password':
         write_guard(); $u=require_user(); $d=input();

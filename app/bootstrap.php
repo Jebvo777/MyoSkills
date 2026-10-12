@@ -87,6 +87,22 @@ function value(array $data, string $key, int $max = 1000, string $default = ''):
 }
 function required(array $data, string $key, int $max = 1000): string { $s=value($data,$key,$max); if($s==='') fail('Заполните поле ' . $key); return $s; }
 function ident(mixed $value): int { $id=filter_var($value,FILTER_VALIDATE_INT); if(!$id || $id<1) fail('Некорректный идентификатор'); return $id; }
+function http_url(string $value): string {
+    if($value==='') return '';
+    $p=parse_url($value);
+    if(!is_array($p) || !in_array($p['scheme']??'', ['http','https'],true) || empty($p['host']) || !filter_var($value,FILTER_VALIDATE_URL)) fail('Ссылка должна начинаться с https:// или http://');
+    return $value;
+}
+function coordinate(mixed $value,int $limit): ?float {
+    if($value===null || $value==='') return null;
+    if(!is_numeric($value) || !is_finite((float)$value) || abs((float)$value)>$limit) fail('Некорректные координаты');
+    return (float)$value;
+}
+function profile_clinics(mixed $value): array {
+    if(is_string($value)) $value=preg_split('/\r?\n/',$value);
+    if(!is_array($value)||count($value)>10) fail('Не более 10 клиник');
+    return array_values(array_filter(array_map(fn($s)=>value(['clinic'=>$s],'clinic',180),$value)));
+}
 function date_value(mixed $value, bool $optional = true): ?string {
     if (!$value && $optional) return null;
     $d=DateTimeImmutable::createFromFormat('!Y-m-d',(string)$value);
@@ -121,22 +137,28 @@ function require_user(array $roles = []): array {
     return $u;
 }
 function public_user(array $u, bool $self = false): array {
-    $fields=['id','name','role','specialty','city','clinic','about','verified','latitude','longitude'];
+    $fields=['id','name','role','specialty','city','clinic','about','education','hobbies','verified','latitude','longitude'];
     $result=array_intersect_key($u,array_flip($fields));
     $result['id']=(int)$u['id'];
     $result['verified']=(bool)$u['verified'];
-    if($self || (bool)$u['contact_public']) { $result['email']=$u['email']; $result['phone']=$u['phone']; }
+    $preferences=json_decode($u['preferences_json']??'{}',true)?:[];
+    foreach(['email','phone','social_url'] as $field){$key=$field==='social_url'?'public_social':'public_'.$field;if($self || ((bool)$u['contact_public'] && ($preferences[$key]??true)))$result[$field]=$u[$field];}
+    if($u['role']==='doctor') {
+        $result['clinics']=json_decode($u['clinics_json']??'[]',true)?:[];
+        $result['documents']=many("SELECT id,original_name,mime_type FROM media WHERE owner_id=? AND category='diploma' AND is_public=1",[$u['id']]);
+    }
     if($self) { $result['contact_public']=(bool)$u['contact_public']; $result['clinics']=json_decode($u['clinics_json']??'[]',true)?:[]; $result['preferences']=json_decode($u['preferences_json']??'{}',true)?:[]; }
     return $result;
 }
 function may_assign(array $u): bool { return $u['role']==='doctor' && $u['specialty']==='myotherapist' && (bool)$u['verified']; }
 function assert_doctor(array $u): void { if($u['role']!=='doctor' || !$u['verified']) fail('Действие доступно верифицированному специалисту',403); }
 function patient_access(int $patientId, array $u, bool $history = false): array {
-    $p=one('SELECT p.*,u.name,u.email,u.phone,u.city,u.contact_public FROM patients p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND u.active=1',[$patientId]);
+    $p=one('SELECT p.*,u.name,u.email,u.phone,u.social_url,u.city,u.contact_public,u.preferences_json FROM patients p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND u.active=1',[$patientId]);
     if(!$p) fail('Пациент не найден',404);
+    $preferences=json_decode($p['preferences_json']??'{}',true)?:[];unset($p['preferences_json']);
     if($u['role']==='admin') return $p;
     if($u['role']==='patient' && (int)$u['id']===$patientId && !$history) return $p;
-    if($u['role']==='doctor' && $u['verified'] && one('SELECT id FROM patient_team WHERE patient_id=? AND doctor_id=? AND status=?',[$patientId,$u['id'],'active'])) { if(!$p['contact_public']) {$p['email']='';$p['phone']='';} return $p; }
+    if($u['role']==='doctor' && $u['verified'] && one('SELECT id FROM patient_team WHERE patient_id=? AND doctor_id=? AND status=?',[$patientId,$u['id'],'active'])) { foreach(['email','phone','social_url'] as $field){$key=$field==='social_url'?'public_social':'public_'.$field;if(!$p['contact_public']||!($preferences[$key]??true))$p[$field]='';} return $p; }
     fail('Нет доступа к данным этого пациента',403);
 }
 function patient_id(array $u, array $data = []): int { return $u['role']==='patient' ? (int)$u['id'] : ident($data['patient_id'] ?? $_GET['patient_id'] ?? 0); }
@@ -179,6 +201,8 @@ function media_allowed(array $m,array $u): bool {
         if($u['role']==='doctor') return (bool)$u['verified'];
         return (bool)one('SELECT a.id FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.patient_id=? AND e.video_media_id=? AND a.status=?',[$u['id'],$m['id'],'active']);
     }
+    if($m['category']==='site') return false;
+    if($m['category']==='document' && $u['role']==='patient' && (int)$m['owner_id']!==(int)$u['id']) return false;
     if($m['patient_id']) { try { patient_access((int)$m['patient_id'],$u); return true; } catch(ApiError){ return false; } }
     return false;
 }
@@ -188,13 +212,15 @@ function store_upload(array $u,array $d): array {
     $f=$_FILES['file'];
     if(($f['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK) fail(($f['error']??0)===UPLOAD_ERR_INI_SIZE?'Файл превышает лимит хостинга':'Не удалось принять файл');
     $category=value($d,'category',30);
-    if(!in_array($category,['video','photo','document','diploma','exercise'],true)) fail('Недопустимая категория');
+    if(!in_array($category,['video','photo','document','diploma','exercise','site'],true)) fail('Недопустимая категория');
     $pid=null;
     if($category==='diploma') { if($u['role']!=='doctor') fail('Документы специалиста недоступны',403); }
-    elseif($category==='exercise') { if($u['role']!=='admin') fail('Библиотекой управляет администратор',403); }
+    elseif(in_array($category,['exercise','site'],true)) { if($u['role']!=='admin') fail('Библиотекой управляет администратор',403); }
     else { $pid=patient_id($u,$d); patient_access($pid,$u); }
     if($category==='photo' && !($u['role']==='admin'||($u['role']==='doctor'&&in_array($u['specialty'],['myotherapist','orthodontist'],true)))) fail('Фотопротокол добавляет ортодонт или миотерапевт',403);
     if($category==='video' && $u['role']!=='patient') fail('Видео выполнения отправляет пациент',403);
+    $visitId=!empty($d['visit_id'])?ident($d['visit_id']):null;
+    if($visitId && (!in_array($category,['photo','document'],true) || !in_array($u['role'],['doctor','admin'],true) || !one('SELECT id FROM visits WHERE id=? AND patient_id=?',[$visitId,$pid]))) fail('Приём недоступен',403);
     $mime=(new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);
     $video=['video/mp4'=>'mp4','video/webm'=>'webm','video/quicktime'=>'mov'];
     $images=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
@@ -209,9 +235,13 @@ function store_upload(array $u,array $d): array {
     if(!is_dir(dirname($dest))) mkdir(dirname($dest),0750,true);
     if(!move_uploaded_file($f['tmp_name'],$dest)) fail('Хранилище недоступно для записи',503);
     chmod($dest,0640);
-    try { $id=insert('media',['owner_id'=>$u['id'],'patient_id'=>$pid,'category'=>$category,'original_name'=>mb_substr(basename($f['name']),0,190),'stored_name'=>$stored,'mime_type'=>$mime,'size_bytes'=>$f['size'],'capture_date'=>date_value($d['capture_date']??null),'note'=>value($d,'note',255),'created_at'=>now()]); }
+    try { $id=transaction(function() use($u,$pid,$category,$f,$stored,$mime,$d,$visitId){
+        $id=insert('media',['owner_id'=>$u['id'],'patient_id'=>$pid,'category'=>$category,'original_name'=>mb_substr(basename($f['name']),0,190),'stored_name'=>$stored,'mime_type'=>$mime,'size_bytes'=>$f['size'],'capture_date'=>date_value($d['capture_date']??null),'note'=>value($d,'note',255),'is_public'=>$category==='site'?1:0,'created_at'=>now()]);
+        if($visitId) insert('visit_files',['visit_id'=>$visitId,'media_id'=>$id]);
+        audit($u,'upload',$category,$id);
+        return $id;
+    }); }
     catch(Throwable $e) { unlink($dest); throw $e; }
-    audit($u,'upload',$category,$id);
     if($category==='photo'){ notification((int)$pid,'photo','Новый фотопротокол','Врач добавил фотографию в историю прогресса','?page=progress'); }
     if($category==='diploma') foreach(many('SELECT id FROM users WHERE role=?',['admin']) as $a) notification((int)$a['id'],'verification','Новые документы специалиста',$u['name'],'?page=admin&tab=verification');
     return ['id'=>$id,'url'=>url('media.php?id='.$id),'mime_type'=>$mime,'category'=>$category];

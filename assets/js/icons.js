@@ -1,4 +1,6 @@
 export const paths={
+ volume:'<path d="M3 9h4l5-4v14l-5-4H3V9Zm13-2a7 7 0 0 1 0 10m3-13a11 11 0 0 1 0 16"/>',
+ phone:'<path d="M5 3h4l2 5-3 2a16 16 0 0 0 6 6l2-3 5 2v4c0 2-2 3-4 2C9 20 4 15 3 7c-1-2 0-4 2-4Z"/>',
  orbit:'<circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="11" ry="5" transform="rotate(-35 12 12)"/>',
  rocket:'<path d="M14 4c3-2 6-2 6-2s0 3-2 6l-7 7-5-5 8-6Z"/><circle cx="15" cy="7" r="2"/><path d="m7 9-4 1-1 5 5-1m4 3-1 5 5-1 1-4M5 17l-3 5 5-3"/>',
  grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',

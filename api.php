@@ -6,7 +6,7 @@ try {
     $public=['public','auth.me','auth.login','auth.register','auth.forgot','auth.reset'];
     if(!in_array($action,$public,true)) require_user();
     if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET') write_guard();
-    foreach(['auth','patient','doctor','admin'] as $module) {
+    foreach(['auth','extra','patient','doctor','admin'] as $module) {
         require_once __DIR__.'/app/api_'.$module.'.php';
         $handler='api_'.$module;
         if($handler($action)) exit;
