@@ -20,7 +20,7 @@ if (PHP_SAPI !== 'cli') {
     header('Referrer-Policy: same-origin');
     header('X-Frame-Options: SAMEORIGIN');
     header('Permissions-Policy: camera=(self), microphone=(self), geolocation=(self)');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-" . nonce() . "'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'nonce-" . nonce() . "'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
 }
 
 function config(string $key, mixed $fallback = null): mixed {

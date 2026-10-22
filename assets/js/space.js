@@ -1,10 +1,11 @@
-import {state,asset,$$, $} from './core.js?v=20261022-uikit';
+import {state,asset,$$, $} from './core.js?v=20261022-orbit';
+import {initOrbitalExperiences} from './orbit-experience.js?v=20261022-orbit';
 let shaderFiles;
 const positions=[[.19,.75],[.51,.84],[.82,.68],[.74,.28],[.40,.17],[.15,.33]];
 const rgb=hex=>{const v=parseInt(String(hex).replace('#',''),16);return [(v>>16&255)/255,(v>>8&255)/255,(v&255)/255];};
 export function initSpace(){
  $$('.webgl-scene').forEach(canvas=>mount(canvas));
- initJaw();
+ initJaw();initOrbitalExperiences();
 }
 async function mount(canvas){
  let gl;try{gl=canvas.getContext('webgl',{alpha:true,antialias:false,powerPreference:'low-power',premultipliedAlpha:false});}catch{}
@@ -52,5 +53,10 @@ export function initJaw(){
  const model=$('#jaw-model'),slider=$('#jaw-slider');if(!model||!slider)return;
  const set=()=>{const value=Number(slider.value)/100;$('#jaw-percentage').textContent=Math.round(value*100)+'%';$$('.model-tooth').forEach(el=>{const i=Number(el.dataset.tooth),n=i-5.5,a=Math.abs(n),jitter=Math.sin(i*2.7),x=n*29+(1-value)*jitter*7,y=a*a*1.2+(1-value)*Math.cos(i*1.8)*10,z=-a*a*1.5,angle=(1-value)*jitter*18;el.style.transform=`translate3d(${x}px,${y}px,${z}px) rotateY(${n*3}deg) rotateZ(${angle}deg)`;});};
  slider.addEventListener('input',set);set();
- let phase=0,raf=0;const animate=()=>{if(document.documentElement.dataset.motion==='off'||!model.isConnected)return;phase+=.008;model.style.setProperty('--jaw-sway',Math.sin(phase)*4+'deg');raf=requestAnimationFrame(animate);};animate();state.cleanup.push(()=>cancelAnimationFrame(raf));
+ let raf=0,visible=true,elapsed=0,last=0;
+ const animate=now=>{raf=0;if(document.documentElement.dataset.motion==='off'||document.hidden||!visible||!model.isConnected)return;elapsed+=Math.min(.05,Math.max(0,(now-last)/1000));last=now;model.style.setProperty('--jaw-sway',Math.sin(elapsed*.35)*2.5+'deg');raf=requestAnimationFrame(animate);};
+ const resume=()=>{if(!raf&&!document.hidden&&visible&&document.documentElement.dataset.motion!=='off'){last=performance.now();raf=requestAnimationFrame(animate);}};
+ const observer=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting!==false;if(visible)resume();else{cancelAnimationFrame(raf);raf=0;}});observer.observe(model);
+ const visibility=()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0;}else resume();};document.addEventListener('visibilitychange',visibility);
+ resume();state.cleanup.push(()=>{cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',visibility);});
 }

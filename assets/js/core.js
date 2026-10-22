@@ -1,11 +1,11 @@
-import {icon} from './icons.js?v=20261022-uikit';
-import {t,lang,setLang} from './i18n.js?v=20261022-uikit';
+import {icon} from './icons.js?v=20261022-orbit';
+import {t,lang,setLang} from './i18n.js?v=20261022-orbit';
 export {icon,t,lang,setLang};
 export const state={...window.MYO_BOOT,public:null,dashboard:null,route:{},navigate:null,cleanup:[],modalCleanup:null};
 export const $=(selector,root=document)=>root.querySelector(selector);
 export const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261022-uikit')}`:''}`;};
+export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261022-orbit')}`:''}`;};
 export const href=(page,params={})=>`${state.base}/index.php?${new URLSearchParams({page,...params})}`;
 export const go=(page,params={},flight=false)=>state.navigate(page,params,flight);
 export const fmtDate=(v,full=false)=>v?new Date(String(v).replace(' ','T')).toLocaleDateString(lang()==='en'?'en-GB':'ru-RU',{day:'numeric',month:'short',...(full?{year:'numeric'}:{})}):'—';
@@ -15,7 +15,8 @@ export const statusLabel=s=>t(({pending:'На проверке',approved:'Под
 export const badge=(text,kind='')=>`<span class="badge ${esc(kind)}">${esc(text)}</span>`;
 export const button=(text,action,ic='arrow',cls='btn',attrs='')=>`<button type="button" class="${cls}" ${action?`data-action="${esc(action)}"`:''} ${attrs}>${esc(t(text))}${icon(ic)}</button>`;
 export const navLink=(text,page,ic='arrow',cls='btn',params={})=>`<a class="${cls}" data-nav="${esc(page)}" href="${href(page,params)}" ${Object.entries(params).map(([k,v])=>`data-${k.replace(/_/g,'-')}="${esc(v)}"`).join(' ')}>${esc(t(text))}${icon(ic)}</a>`;
-export const empty=(title,text,ic='orbit')=>`<div class="empty-state">${icon(ic)}<h3>${esc(t(title))}</h3><p>${esc(t(text))}</p></div>`;
+const emptyArt={rocket:'route-observatory',book:'route-observatory',video:'video-relay',people:'care-constellation',image:'orbital-medical-station'};
+export const empty=(title,text,ic='orbit')=>`<div class="empty-state">${emptyArt[ic]?`<img class="empty-illustration" src="${asset('assets/images/'+emptyArt[ic]+'.webp')}" alt="" loading="lazy">`:icon(ic)}<h3>${esc(t(title))}</h3><p>${esc(t(text))}</p></div>`;
 export const field=(label,name,value='',type='text',attrs='')=>{
  const password=type==='password',hint=password&&(/new-password|minlength=/.test(attrs));
  const id=`field-${name.replace(/[^a-z0-9_-]/gi,'-')}`,placeholder=/placeholder=/.test(attrs)?'':' placeholder=" "';
@@ -67,22 +68,28 @@ export function pageHead(eyebrow,title,description='',actions=''){return `<heade
 export function baseEffects(){
  const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target);}}),{threshold:.08});
  $$('.reveal').forEach(el=>observer.observe(el));state.cleanup.push(()=>observer.disconnect());
- $$('.tilt').forEach(el=>{el.addEventListener('pointermove',e=>{if(document.documentElement.dataset.motion==='off')return;const r=el.getBoundingClientRect();el.style.setProperty('--rx',`${-(e.clientY-r.top-r.height/2)/r.height*7}deg`);el.style.setProperty('--ry',`${(e.clientX-r.left-r.width/2)/r.width*10}deg`);});el.addEventListener('pointerleave',()=>{el.style.setProperty('--rx','0deg');el.style.setProperty('--ry','0deg');});});
+ $$('.tilt').forEach(el=>{
+  let raf=0,last=0,rx=0,ry=0,tx=0,ty=0;
+  const tick=now=>{raf=0;if(!el.isConnected||document.documentElement.dataset.motion==='off')return;const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;const blend=1-Math.exp(-dt*8);rx+=(tx-rx)*blend;ry+=(ty-ry)*blend;el.style.setProperty('--rx',`${rx.toFixed(3)}deg`);el.style.setProperty('--ry',`${ry.toFixed(3)}deg`);if(Math.abs(tx-rx)+Math.abs(ty-ry)>.015)raf=requestAnimationFrame(tick);};
+  const run=()=>{if(!raf){last=performance.now();raf=requestAnimationFrame(tick);}};
+  const move=e=>{if(e.pointerType==='touch'||document.documentElement.dataset.motion==='off')return;const r=el.getBoundingClientRect();tx=-(e.clientY-r.top-r.height/2)/r.height*3;ty=(e.clientX-r.left-r.width/2)/r.width*4;run();};
+  const leave=()=>{tx=ty=0;run();};el.addEventListener('pointermove',move,{passive:true});el.addEventListener('pointerleave',leave);state.cleanup.push(()=>{cancelAnimationFrame(raf);el.removeEventListener('pointermove',move);el.removeEventListener('pointerleave',leave);});
+ });
  $$('.star-canvas').forEach(startStars);
 }
 function startStars(canvas){
  const ctx=canvas.getContext('2d');if(!ctx)return;
  const global=canvas.dataset.starfield==='global';let raf=0,width=1,height=1,last=0,disposed=false;
  const random=i=>{const n=Math.sin(i*127.1+311.7)*43758.5453;return n-Math.floor(n);};
- const particles=Array.from({length:global?230:95},(_,i)=>({x:random(i*6+1),y:random(i*6+2),r:random(i*6+3)*(global?1.15:1.2)+.35,phase:random(i*6+4)*6.28,speed:random(i*6+5)*.3+.16}));
+ const particles=Array.from({length:global?155:65},(_,i)=>({x:random(i*6+1),y:random(i*6+2),r:random(i*6+3)*(global?.85:.9)+.25,phase:random(i*6+4)*6.28,speed:random(i*6+5)*.3+.16}));
  const resize=()=>{const r=canvas.getBoundingClientRect();width=Math.max(1,r.width);height=Math.max(1,r.height);const ratio=Math.min(devicePixelRatio||1,1.5);canvas.width=width*ratio;canvas.height=height*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);draw(performance.now(),true);};
  function draw(time=0,force=false){
   if(disposed)return;if(force&&raf)cancelAnimationFrame(raf);raf=0;
   const moving=document.documentElement.dataset.motion!=='off';
   if(!force&&time-last<32){raf=requestAnimationFrame(draw);return;}last=time;const phase=moving?time/1000:0;
   ctx.clearRect(0,0,width,height);
-  if(global){ctx.beginPath();particles.slice(0,27).forEach((p,i)=>{particles.slice(i+1,27).forEach(q=>{if(Math.hypot(p.x-q.x,p.y-q.y)<.12){ctx.moveTo(p.x*width,p.y*height);ctx.lineTo(q.x*width,q.y*height);}});});ctx.strokeStyle='rgba(97,225,202,.065)';ctx.lineWidth=.65;ctx.stroke();}
-  particles.forEach(p=>{const alpha=.16+(Math.sin(phase*p.speed+p.phase)*.5+.5)*.56,x=p.x*width,y=p.y*height;
+  if(global){ctx.beginPath();particles.slice(0,27).forEach((p,i)=>{particles.slice(i+1,27).forEach(q=>{if(Math.hypot(p.x-q.x,p.y-q.y)<.12){ctx.moveTo(p.x*width,p.y*height);ctx.lineTo(q.x*width,q.y*height);}});});ctx.strokeStyle='rgba(97,224,202,.035)';ctx.lineWidth=.65;ctx.stroke();}
+  particles.forEach(p=>{const alpha=.1+(Math.sin(phase*p.speed+p.phase)*.5+.5)*.42,x=p.x*width,y=p.y*height;
    if(global&&p.r>1.15){const glow=ctx.createRadialGradient(x,y,0,x,y,p.r*6);glow.addColorStop(0,`rgba(97,225,202,${alpha*.45})`);glow.addColorStop(1,'rgba(97,225,202,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,y,p.r*6,0,Math.PI*2);ctx.fill();}
    ctx.fillStyle=`rgba(${p.phase>4.9?'238,214,157':'169,219,231'},${alpha})`;ctx.beginPath();ctx.arc(x,y,p.r,0,Math.PI*2);ctx.fill();
   });

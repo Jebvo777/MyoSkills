@@ -49,9 +49,9 @@ export const paths={
  trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
  send:'<path d="m2 2 20 10-20 10 4-10Zm4 10h16"/>'
 };
-const kitIcons={direction:'direction.svg',arrow:'arrow',arrowup:'arrow',search:'search','eye-off':'eye-off',people:'people',video:'video',bell:'bell',message:'message',settings:'settings',logout:'logout',plus:'faq-plus',menu:'mobile-menu','card-video':'card-video'};
+const kitIcons={direction:'direction',arrow:'arrow',arrowup:'arrow',search:'search','eye-off':'eye-off',people:'people',video:'video',bell:'bell',message:'message',settings:'settings',logout:'logout',plus:'faq-plus',menu:'mobile-menu','card-video':'card-video'};
 export function icon(name,cls=''){
  if(!name)return '';
- if(kitIcons[name]){const base=window.MYO_BOOT?.base||'',version=window.MYO_BOOT?.asset_version||'20261022-uikit';return `<span class="icon icon-asset icon-${name} ${cls}" aria-hidden="true"><img src="${base}/assets/uikit/${kitIcons[name]}.svg?v=${version}" alt="" draggable="false"></span>`;}
+ if(kitIcons[name]){const base=window.MYO_BOOT?.base||'',version=window.MYO_BOOT?.asset_version||'20261022-orbit';return `<span class="icon icon-asset icon-${name} ${cls}" aria-hidden="true"><img src="${base}/assets/uikit/${kitIcons[name]}.svg?v=${version}" alt="" draggable="false"></span>`;}
  return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.orbit}</svg>`;
 }

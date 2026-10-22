@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-22",
+  "method": "Built-in image generation",
+  "assets": [
+    {
+      "path": "assets/images/route-observatory.webp",
+      "prompt": "Use case: stylized-concept. Asset type: isolated premium 3D illustration for the MyoSkills space-themed rehabilitation web app. Refined pearlescent ceramic, clear frosted glass, lilac resin and small mint luminous details; palette #61E0CA, #7357E8, #DDE3F2, #F7F8FF, no saturated primary colors. Product-render quality, soft studio rim lights, natural ambient occlusion, crisp geometry, elegant and playful without looking like a toy. Actual transparent background and fully visible silhouette with generous margins, no backdrop, no shadow rectangle, no text, no letters, no labels, no logos, no watermark. One coherent object composition, no collage, no UI screenshot. Subject: a small sculptural orbital observatory with a pearlescent spherical core and a floating transparent glass navigation disc. A mint illuminated trajectory connects three tiny lilac celestial moons above the disc. Three-quarter view, the object fills 75% of a landscape frame. The route feels like a beautiful navigational instrument, no arrows or typography.",
+      "transparent_background": true,
+      "delivery": "Optimized WebP, alpha preserved"
+    },
+    {
+      "path": "assets/images/video-relay.webp",
+      "prompt": "Use case: stylized-concept. Asset type: isolated premium 3D illustration for the MyoSkills space-themed rehabilitation web app. Refined pearlescent ceramic, clear frosted glass, lilac resin and small mint luminous details; palette #61E0CA, #7357E8, #DDE3F2, #F7F8FF, no saturated primary colors. Product-render quality, soft studio rim lights, natural ambient occlusion, crisp geometry, elegant and playful without looking like a toy. Actual transparent background and fully visible silhouette with generous margins, no backdrop, no shadow rectangle, no text, no letters, no labels, no logos, no watermark. One coherent object composition, no collage, no UI screenshot. Subject: a futuristic floating video communication device, a rounded pearl camera with a deep navy glass lens, gently encircled by a lilac orbital ring. A small translucent mint hologram pane with one smooth luminous wave floats beside it. Single visually balanced sculptural composition, three-quarter view, fills 75% of landscape frame.",
+      "transparent_background": true,
+      "delivery": "Optimized WebP, alpha preserved"
+    },
+    {
+      "path": "assets/images/care-constellation.webp",
+      "prompt": "Use case: stylized-concept. Asset type: isolated premium 3D illustration for the MyoSkills space-themed rehabilitation web app. Refined pearlescent ceramic, clear frosted glass, lilac resin and small mint luminous details; palette #61E0CA, #7357E8, #DDE3F2, #F7F8FF, no saturated primary colors. Product-render quality, soft studio rim lights, natural ambient occlusion, crisp geometry, elegant and playful without looking like a toy. Actual transparent background and fully visible silhouette with generous margins, no backdrop, no shadow rectangle, no text, no letters, no labels, no logos, no watermark. One coherent object composition, no collage, no UI screenshot. Subject: three pearl and frosted-lilac orbital satellites arranged around a luminous mint opal central sphere, linked by delicate curved light trails. They symbolize a connected care team. Each satellite has its own elegant simple geometric silhouette, small circular solar sails, beautiful reflective surfaces. Dense central composition, fills 75% of landscape frame.",
+      "transparent_background": true,
+      "delivery": "Optimized WebP, alpha preserved"
+    },
+    {
+      "path": "assets/images/orbital-medical-station.webp",
+      "prompt": "Use case: stylized-concept. Asset type: isolated premium 3D illustration for the MyoSkills space-themed rehabilitation web app. Refined pearlescent ceramic, clear frosted glass, lilac resin and small mint luminous details; palette #61E0CA, #7357E8, #DDE3F2, #F7F8FF, no saturated primary colors. Product-render quality, soft studio rim lights, natural ambient occlusion, crisp geometry, elegant and playful without looking like a toy. Actual transparent background and fully visible silhouette with generous margins, no backdrop, no shadow rectangle, no text, no letters, no labels, no logos, no watermark. One coherent object composition, no collage, no UI screenshot. Subject: a beautiful futuristic orbital medical research station, sculpted ivory ceramic and lavender glass architecture, a circular hub and two soft curved arms around a suspended mint opal sphere. Three tiny lilac moons and delicate elliptical orbit trails. A sophisticated aspirational space habitat, single coherent full scene isolated as a cutout, three-quarter view, wide horizontal composition.",
+      "transparent_background": true,
+      "delivery": "Optimized WebP, alpha preserved"
+    }
+  ]
+}

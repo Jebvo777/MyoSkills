@@ -1,0 +1,58 @@
+[
+  {
+    "file": "planet-posture.glb",
+    "bytes": 404956,
+    "triangles": 45062,
+    "primitives": 8,
+    "decodedBytes": 1445068,
+    "compression": "EXT_meshopt_compression"
+  },
+  {
+    "file": "planet-breathing.glb",
+    "bytes": 486524,
+    "triangles": 63080,
+    "primitives": 6,
+    "decodedBytes": 1770712,
+    "compression": "EXT_meshopt_compression"
+  },
+  {
+    "file": "planet-tongue.glb",
+    "bytes": 285056,
+    "triangles": 35430,
+    "primitives": 7,
+    "decodedBytes": 991328,
+    "compression": "EXT_meshopt_compression"
+  },
+  {
+    "file": "planet-swallowing.glb",
+    "bytes": 334840,
+    "triangles": 45678,
+    "primitives": 7,
+    "decodedBytes": 1257620,
+    "compression": "EXT_meshopt_compression"
+  },
+  {
+    "file": "planet-chewing.glb",
+    "bytes": 419208,
+    "triangles": 49712,
+    "primitives": 8,
+    "decodedBytes": 1503784,
+    "compression": "EXT_meshopt_compression"
+  },
+  {
+    "file": "planet-lips.glb",
+    "bytes": 313208,
+    "triangles": 38924,
+    "primitives": 7,
+    "decodedBytes": 1081944,
+    "compression": "EXT_meshopt_compression"
+  },
+  {
+    "file": "rocket.glb",
+    "bytes": 81620,
+    "triangles": 8136,
+    "primitives": 12,
+    "decodedBytes": 281840,
+    "compression": "EXT_meshopt_compression"
+  }
+]

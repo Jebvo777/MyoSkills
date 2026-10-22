@@ -1,17 +1,18 @@
-import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-uikit';
-import {localizeStatic} from './i18n.js?v=20261022-uikit';
-import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-uikit';
-import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-uikit';
-import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-uikit';
-import {selectStory} from './views-extra.js?v=20261022-uikit';
-import {initSpace,focusPlanet} from './space.js?v=20261022-uikit';
-import {initUIKit} from './ui-kit.js?v=20261022-uikit';
+import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-orbit';
+import {localizeStatic} from './i18n.js?v=20261022-orbit';
+import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-orbit';
+import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-orbit';
+import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-orbit';
+import {selectStory} from './views-extra.js?v=20261022-orbit';
+import {initSpace,focusPlanet} from './space.js?v=20261022-orbit';
+import {initUIKit,scrollReviews} from './ui-kit.js?v=20261022-orbit';
 
 const protectedPages=['dashboard','galaxy','mission','diary','progress','team','messages','profile','doctor','patient','admin'];
 let renderSequence=0;
 const routeFromLocation=()=>Object.fromEntries(new URLSearchParams(location.search));
 function resetPage(){state.cleanup.splice(0).forEach(fn=>fn());if(state.recorder)stopRecorder();closeModal();}
 function applyMotion(){document.documentElement.dataset.motion=state.user?.preferences?.reduced_motion||matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'on';}
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',()=>{applyMotion();window.dispatchEvent(new Event('myo:motion'));});
 state.navigate=async(page,params={},flight=false)=>{
  if(flight&&document.documentElement.dataset.motion!=='off'){$('#flight').classList.add('active');await new Promise(r=>setTimeout(r,800));$('#flight').classList.remove('active');}
  history.pushState({},'',href(page,params));await render({page,...params});window.scrollTo({top:0,behavior:'instant'});
@@ -72,6 +73,8 @@ document.addEventListener('click',async e=>{
  const el=e.target.closest('[data-action]');if(!el)return;
  const d=el.dataset;
  switch(d.action){
+  case 'reviews-prev':scrollReviews(-1);break;
+  case 'reviews-next':scrollReviews(1);break;
   case 'language':setLang(lang()==='ru'?'en':'ru');render(state.route);break;
   case 'password-visibility':{const input=el.closest('.password-wrap')?.querySelector('input');if(!input)break;const visible=input.type==='password';input.type=visible?'text':'password';el.setAttribute('aria-pressed',String(visible));el.setAttribute('aria-label',t(visible?'Скрыть пароль':'Показать пароль'));el.innerHTML=icon(visible?'eye':'eye-off');break;}
   case 'add-clinic':{const inputs=$('#clinic-inputs');if(!inputs)break;const count=$$('[data-clinic-input]',inputs).length;if(count>=10)break;inputs.insertAdjacentHTML('beforeend',field(`${t('Клиника')} ${count+1}`,`clinic_${count+1}`,'','text','data-clinic-input maxlength="180"'));inputs.lastElementChild.querySelector('input').focus();if(count+1>=10)el.disabled=true;break;}

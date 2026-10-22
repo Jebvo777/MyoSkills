@@ -3,7 +3,7 @@ declare(strict_types=1);
 require __DIR__.'/app/bootstrap.php';
 $me=null;
 try {$u=user();if($u)$me=public_user($u,true);}catch(Throwable){}
-$assetVersion='20261022-uikit';
+$assetVersion='20261022-orbit';
 $boot=['base'=>rtrim((string)config('base_path'),'/'),'asset_version'=>$assetVersion,'user'=>$me,'csrf'=>csrf_token(),'demo'=>(bool)config('demo_labels'),'limits'=>config('uploads')];
 ?>
 <!doctype html>
@@ -21,6 +21,7 @@ $boot=['base'=>rtrim((string)config('base_path'),'/'),'asset_version'=>$assetVer
  <link rel="stylesheet" href="<?=h(url('assets/css/extra.css?v='.$assetVersion))?>">
  <link rel="stylesheet" href="<?=h(url('assets/css/dark-space.css?v='.$assetVersion))?>">
  <link rel="stylesheet" href="<?=h(url('assets/css/uikit.css?v='.$assetVersion))?>">
+ <link rel="stylesheet" href="<?=h(url('assets/css/orbit.css?v='.$assetVersion))?>">
 </head>
 <body>
  <div class="space-backdrop" aria-hidden="true"><canvas class="star-canvas global-starfield" data-starfield="global"></canvas><i class="shooting-star star-one"></i><i class="shooting-star star-two"></i><div class="space-noise"></div></div>
