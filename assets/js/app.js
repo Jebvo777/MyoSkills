@@ -1,11 +1,11 @@
-import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-orbit';
-import {localizeStatic} from './i18n.js?v=20261022-orbit';
-import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-orbit';
-import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-orbit';
-import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-orbit';
-import {selectStory} from './views-extra.js?v=20261022-orbit';
-import {initSpace,focusPlanet} from './space.js?v=20261022-orbit';
-import {initUIKit,scrollReviews} from './ui-kit.js?v=20261022-orbit';
+import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-starchild';
+import {localizeStatic} from './i18n.js?v=20261022-starchild';
+import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-starchild';
+import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-starchild';
+import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-starchild';
+import {selectStory} from './views-extra.js?v=20261022-starchild';
+import {initSpace,focusPlanet} from './space.js?v=20261022-starchild';
+import {initUIKit,scrollReviews} from './ui-kit.js?v=20261022-starchild';
 
 const protectedPages=['dashboard','galaxy','mission','diary','progress','team','messages','profile','doctor','patient','admin'];
 let renderSequence=0;
@@ -73,6 +73,7 @@ document.addEventListener('click',async e=>{
  const el=e.target.closest('[data-action]');if(!el)return;
  const d=el.dataset;
  switch(d.action){
+  case 'star-child-greet':{const host=el.closest('.star-child');host?.dispatchEvent(new CustomEvent('myo:guide-greet'));const status=host?.querySelector('.guide-greeting-status');if(status){status.textContent='';requestAnimationFrame(()=>{if(status.isConnected)status.textContent=t('Привет, исследователь! Я рядом на каждой орбите.');});}break;}
   case 'reviews-prev':scrollReviews(-1);break;
   case 'reviews-next':scrollReviews(1);break;
   case 'language':setLang(lang()==='ru'?'en':'ru');render(state.route);break;

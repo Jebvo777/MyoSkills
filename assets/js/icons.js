@@ -52,6 +52,6 @@ export const paths={
 const kitIcons={direction:'direction',arrow:'arrow',arrowup:'arrow',search:'search','eye-off':'eye-off',people:'people',video:'video',bell:'bell',message:'message',settings:'settings',logout:'logout',plus:'faq-plus',menu:'mobile-menu','card-video':'card-video'};
 export function icon(name,cls=''){
  if(!name)return '';
- if(kitIcons[name]){const base=window.MYO_BOOT?.base||'',version=window.MYO_BOOT?.asset_version||'20261022-orbit';return `<span class="icon icon-asset icon-${name} ${cls}" aria-hidden="true"><img src="${base}/assets/uikit/${kitIcons[name]}.svg?v=${version}" alt="" draggable="false"></span>`;}
+ if(kitIcons[name]){const base=window.MYO_BOOT?.base||'',version=window.MYO_BOOT?.asset_version||'20261022-starchild';return `<span class="icon icon-asset icon-${name} ${cls}" aria-hidden="true"><img src="${base}/assets/uikit/${kitIcons[name]}.svg?v=${version}" alt="" draggable="false"></span>`;}
  return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.orbit}</svg>`;
 }

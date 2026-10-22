@@ -1,5 +1,5 @@
-import {state,asset,$$, $} from './core.js?v=20261022-orbit';
-import {initOrbitalExperiences} from './orbit-experience.js?v=20261022-orbit';
+import {state,asset,$$, $} from './core.js?v=20261022-starchild';
+import {initOrbitalExperiences} from './orbit-experience.js?v=20261022-starchild';
 let shaderFiles;
 const positions=[[.19,.75],[.51,.84],[.82,.68],[.74,.28],[.40,.17],[.15,.33]];
 const rgb=hex=>{const v=parseInt(String(hex).replace('#',''),16);return [(v>>16&255)/255,(v>>8&255)/255,(v&255)/255];};

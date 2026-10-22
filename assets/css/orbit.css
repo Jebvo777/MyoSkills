@@ -128,3 +128,19 @@ body{background:var(--night)}.space-noise{opacity:.035}.space-backdrop{backgroun
 .reveal.visible.tilt{transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:opacity .75s var(--ease-orbit)}
 [data-motion=off] .reveal.visible.tilt{transform:none}
 @media(prefers-reduced-motion:reduce){.reveal.visible.tilt{transform:none}}
+
+/* Star Child: full-body skinning, with an explicit greeting control. */
+.star-child-v2.orbital-guide{height:525px;max-width:465px;overflow:visible;background:radial-gradient(ellipse at 50% 47%,#61e0ca0b,transparent 62%)}
+.star-child-v2>.orbital-canvas{filter:drop-shadow(0 0 3px #61e0ca55)}
+.star-child-v2>.orbital-fallback{padding:20px 65px 52px}
+.story-art:has(.star-child-v2){min-height:525px}
+.guide-greet-button{position:absolute;left:50%;bottom:0;z-index:4;transform:translateX(-50%);display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:11px 20px;border:1px solid #61e0ca77;border-radius:100px;color:var(--text);background:rgba(23,27,53,.9);font:700 14px/20px var(--font-body);white-space:nowrap;transition:background .2s,border-color .2s,box-shadow .3s}
+.guide-greet-button>.icon{width:18px;height:18px;color:var(--mint)}
+.guide-greet-button:hover,.guide-greet-button:focus-visible{background:#61e0ca12;border-color:var(--mint);box-shadow:0 0 25px #61e0ca0c}
+.guide-hello-bubble{position:absolute;right:0;top:32px;z-index:3;padding:12px 16px;border:1px solid #61e0ca66;border-radius:14px 14px 14px 3px;background:rgba(23,27,53,.92);color:var(--paper);font:500 14px/1.4 var(--font-body);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .35s,transform .4s var(--ease-orbit)}
+.is-greeting>.guide-hello-bubble{opacity:1;transform:none}
+@media(max-width:1000px){.guide-hello-bubble{top:10px;right:5px;font-size:12px;padding:10px 13px}}
+@media(max-width:760px){.star-child-v2.orbital-guide{height:465px;max-width:365px}.story-art:has(.star-child-v2){min-height:465px}.star-child-v2>.orbital-fallback{padding:15px 45px 50px}.guide-hello-bubble{top:22px;right:0;font-size:12px}.guide-greet-button{min-height:44px;bottom:0}}
+@media(max-width:390px){.star-child-v2.orbital-guide{height:440px;max-width:310px}.story-art:has(.star-child-v2){min-height:440px}.guide-hello-bubble{top:14px;right:0}}
+[data-motion=off] .guide-hello-bubble{transition:none;transform:none}
+@media(prefers-reduced-motion:reduce){.guide-hello-bubble{transition:none;transform:none}}

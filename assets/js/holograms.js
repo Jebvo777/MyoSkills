@@ -1,4 +1,4 @@
-import {state,t,lang,esc,asset,icon,navLink} from './core.js?v=20261022-orbit';
+import {state,t,lang,esc,asset,icon,navLink} from './core.js?v=20261022-starchild';
 
 export function hologramRoute(){
  const stages=[['Первичная консультация','Знакомство с врачом и персональный план.','specialists','orbital-medical-station.webp'],['Консультация смежных специалистов','Консультации и совместное ведение.','specialists','care-constellation.webp'],['Твой комплекс упражнений','Назначает комплекс упражнений для домашнего повторения','galaxy','route-observatory.webp'],['Домашняя практика','Образец, выполнение и видео врачу.','dashboard','video-relay.webp'],['Наблюдение прогресса','Дневник, фотографии и комментарии команды.','progress','planet-posture.webp']];
@@ -13,4 +13,4 @@ export function cockpitDashboard(d,next,active,progress){
 export function airlockDecoration(){
  return `<div class="orbital-viewport orbital-auth" aria-hidden="true"><img class="orbital-fallback" src="${asset('assets/images/orbital-medical-station.webp')}" alt=""><canvas class="orbital-canvas" data-orbit-scene="shuttle"></canvas><span class="orbital-readout"><i class="signal-dot"></i> MYO / NEXT ORBIT <b>01 — 06</b></span></div>`;
 }
-export function starChild(){return `<div class="star-child star-child-v2 orbital-viewport orbital-guide" role="img" aria-label="${t('Звездное дитя приветственно машет рукой')}"><img class="orbital-fallback" src="${asset('assets/images/constellation-guide.webp')}" alt="" loading="lazy"><canvas class="orbital-canvas" data-orbit-scene="guide" aria-hidden="true"></canvas></div>`;}
+export function starChild(){return `<div class="star-child star-child-v2 orbital-viewport orbital-guide" role="group" aria-label="${t('Звёздное дитя — твой проводник')}"><img class="orbital-fallback" src="${asset('assets/images/constellation-guide.webp')}" alt="" loading="lazy"><canvas class="orbital-canvas" data-orbit-scene="guide" aria-hidden="true"></canvas><span class="guide-hello-bubble" aria-hidden="true">${t('Привет, исследователь!')}</span><button type="button" class="guide-greet-button" data-action="star-child-greet">${icon('spark')}<span>${t('Помахать')}</span></button><span class="guide-greeting-status sr-only" aria-live="polite"></span></div>`;}

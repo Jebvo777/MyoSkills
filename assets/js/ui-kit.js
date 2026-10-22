@@ -1,4 +1,4 @@
-import {state,$,$$} from './core.js?v=20261022-orbit';
+import {state,$,$$} from './core.js?v=20261022-starchild';
 
 export function initUIKit(){
  $$('input[type=range]:not(#compare-slider)').forEach(setRange);
