@@ -1,6 +1,6 @@
-import {state,t,lang,esc,asset,icon,button,navLink,field,textarea,select,check,badge,fmtDate,initials} from './core.js?v=20261022-starchild';
-import {reviewRating} from './visual-sections.js?v=20261022-starchild';
-import {starChild} from './holograms.js?v=20261022-starchild';
+import {state,t,lang,esc,asset,icon,button,navLink,field,textarea,select,check,badge,fmtDate,initials} from './core.js?v=20261022-final';
+import {reviewRating} from './visual-sections.js?v=20261022-final';
+import {starChild} from './holograms.js?v=20261022-final';
 
 export function jawSection(){
  const teeth=arch=>Array.from({length:12},(_,i)=>`<i class="model-tooth" data-tooth="${i}" data-arch="${arch}"><img class="tooth-silhouette" src="${asset('assets/images/tooth-model.svg')}" alt="" draggable="false"></i>`).join('');

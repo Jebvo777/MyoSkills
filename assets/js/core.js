@@ -1,11 +1,11 @@
-import {icon} from './icons.js?v=20261022-starchild';
-import {t,lang,setLang} from './i18n.js?v=20261022-starchild';
+import {icon} from './icons.js?v=20261022-final';
+import {t,lang,setLang} from './i18n.js?v=20261022-final';
 export {icon,t,lang,setLang};
 export const state={...window.MYO_BOOT,public:null,dashboard:null,route:{},navigate:null,cleanup:[],modalCleanup:null};
 export const $=(selector,root=document)=>root.querySelector(selector);
 export const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261022-starchild')}`:''}`;};
+export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261022-final')}`:''}`;};
 export const href=(page,params={})=>`${state.base}/index.php?${new URLSearchParams({page,...params})}`;
 export const go=(page,params={},flight=false)=>state.navigate(page,params,flight);
 export const fmtDate=(v,full=false)=>v?new Date(String(v).replace(' ','T')).toLocaleDateString(lang()==='en'?'en-GB':'ru-RU',{day:'numeric',month:'short',...(full?{year:'numeric'}:{})}):'—';

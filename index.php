@@ -3,7 +3,7 @@ declare(strict_types=1);
 require __DIR__.'/app/bootstrap.php';
 $me=null;
 try {$u=user();if($u)$me=public_user($u,true);}catch(Throwable){}
-$assetVersion='20261022-starchild';
+$assetVersion='20261022-final';
 $boot=['base'=>rtrim((string)config('base_path'),'/'),'asset_version'=>$assetVersion,'user'=>$me,'csrf'=>csrf_token(),'demo'=>(bool)config('demo_labels'),'limits'=>config('uploads')];
 ?>
 <!doctype html>

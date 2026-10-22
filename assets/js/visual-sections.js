@@ -1,4 +1,4 @@
-import {state,t,lang,esc,asset,icon,button,navLink,badge,initials,fmtDate} from './core.js?v=20261022-starchild';
+import {state,t,lang,esc,asset,icon,button,navLink,badge,initials,fmtDate} from './core.js?v=20261022-final';
 
 const copy=(ru,en)=>lang()==='en'?en:ru;
 const art=(name,cls='')=>`<img class="${cls}" src="${asset('assets/images/'+name+'.webp')}" alt="" loading="lazy" decoding="async">`;

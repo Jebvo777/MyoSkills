@@ -1,7 +1,7 @@
-import {hologramRoute,airlockDecoration} from './holograms.js?v=20261022-starchild';
-import {jawSection,storySection,publicDocuments,contactContent} from './views-extra.js?v=20261022-starchild';
-import {state,icon,t,lang,esc,asset,href,button,navLink,badge,field,select,check,empty,cardDoctor,pageHead,planetImage,textarea} from './core.js?v=20261022-starchild';
-import {flightSection,journeySection,serviceSection,testimonialSection,doctorFeature} from './visual-sections.js?v=20261022-starchild';
+import {hologramRoute,airlockDecoration} from './holograms.js?v=20261022-final';
+import {jawSection,storySection,publicDocuments,contactContent} from './views-extra.js?v=20261022-final';
+import {state,icon,t,lang,esc,asset,href,button,navLink,badge,field,select,check,empty,cardDoctor,pageHead,planetImage,textarea} from './core.js?v=20261022-final';
+import {flightSection,journeySection,serviceSection,testimonialSection,doctorFeature} from './visual-sections.js?v=20261022-final';
 export const defaultPlanets=[
  {id:1,slug:'posture',title:'Вертикаль',subtitle:'Осанка',color:'#9d89f8',image:'assets/images/planet-posture.webp',icon:'body'},
  {id:2,slug:'breathing',title:'Аэрис',subtitle:'Дыхание',color:'#61e1ca',image:'assets/images/planet-breathing.webp',icon:'wind'},

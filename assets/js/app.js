@@ -1,11 +1,11 @@
-import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-starchild';
-import {localizeStatic} from './i18n.js?v=20261022-starchild';
-import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-starchild';
-import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-starchild';
-import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-starchild';
-import {selectStory} from './views-extra.js?v=20261022-starchild';
-import {initSpace,focusPlanet} from './space.js?v=20261022-starchild';
-import {initUIKit,scrollReviews} from './ui-kit.js?v=20261022-starchild';
+import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-final';
+import {localizeStatic} from './i18n.js?v=20261022-final';
+import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-final';
+import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-final';
+import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-final';
+import {selectStory} from './views-extra.js?v=20261022-final';
+import {initSpace,focusPlanet} from './space.js?v=20261022-final';
+import {initUIKit,scrollReviews} from './ui-kit.js?v=20261022-final';
 
 const protectedPages=['dashboard','galaxy','mission','diary','progress','team','messages','profile','doctor','patient','admin'];
 let renderSequence=0;

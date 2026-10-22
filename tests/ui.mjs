@@ -28,7 +28,7 @@ const click=s=>{const el=$(s);if(!el)throw Error('Element absent: '+s);el.click(
 const change=(s,value,event='input')=>{const el=$(s);if(!el)throw Error('Element absent: '+s);el.value=value;el.dispatchEvent(new window.Event(event,{bubbles:true}));};
 const submit=s=>$(s).dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
 await import('../assets/js/app.js');
-const core=await import('../assets/js/core.js?v=20261022-starchild');
+const core=await import('../assets/js/core.js?v=20261022-final');
 try{
  await wait(()=>$('.landing-hero'),'landing');
  check('landing renders with six interactive planets',$$('.planet-node').length===6);

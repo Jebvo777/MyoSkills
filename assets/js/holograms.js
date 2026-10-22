@@ -1,4 +1,4 @@
-import {state,t,lang,esc,asset,icon,navLink} from './core.js?v=20261022-starchild';
+import {state,t,lang,esc,asset,icon,navLink} from './core.js?v=20261022-final';
 
 export function hologramRoute(){
  const stages=[['Первичная консультация','Знакомство с врачом и персональный план.','specialists','orbital-medical-station.webp'],['Консультация смежных специалистов','Консультации и совместное ведение.','specialists','care-constellation.webp'],['Твой комплекс упражнений','Назначает комплекс упражнений для домашнего повторения','galaxy','route-observatory.webp'],['Домашняя практика','Образец, выполнение и видео врачу.','dashboard','video-relay.webp'],['Наблюдение прогресса','Дневник, фотографии и комментарии команды.','progress','planet-posture.webp']];

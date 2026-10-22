@@ -1,5 +1,5 @@
-import {state,$$,asset} from './core.js?v=20261022-starchild';
-import {createStarChild} from './star-child.js?v=20261022-starchild';
+import {state,$$,asset} from './core.js?v=20261022-final';
+import {createStarChild} from './star-child.js?v=20261022-final';
 
 let vendorPromise;
 const templates=new Map();
@@ -33,6 +33,8 @@ export function initOrbitalExperiences(){
 async function mount(canvas,isDead){
  const V=await engine();if(isDead()||!canvas.isConnected)return()=>{};
  const T=V.T,mode=canvas.dataset.orbitScene,host=canvas.parentElement;
+ const fallbacks=[...host.children].filter(el=>el.matches('.orbital-fallback,.cockpit-fallback'));
+ const setReady=ready=>{host.classList.toggle('is-3d-ready',ready);fallbacks.forEach(el=>{el.hidden=ready;});};
  let renderer;
  try{renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power',stencil:false});}catch{return()=>{};}
  renderer.setClearColor(0x000000,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;
@@ -47,14 +49,14 @@ async function mount(canvas,isDead){
   if(disposed)return;disposed=true;cancelAnimationFrame(raf);resize.disconnect();intersection.disconnect();
   host.removeEventListener('pointermove',move);host.removeEventListener('pointerleave',leave);host.removeEventListener('pointerenter',greet);host.removeEventListener('focusin',greet);host.removeEventListener('myo:guide-greet',greet);clearTimeout(greetingTimer);guide?.dispose();document.removeEventListener('visibilitychange',visibility);window.removeEventListener('myo:planet',select);window.removeEventListener('myo:motion',motion);canvas.removeEventListener('webglcontextlost',contextLost);
   const done=new Set();scene.traverse(n=>{for(let p=n;p;p=p.parent)if(p.userData.cachedGLTF)return;for(const value of [n.geometry,...(Array.isArray(n.material)?n.material:[n.material])])if(value&&!done.has(value)){done.add(value);value.dispose?.();}});
-  environment?.dispose();renderer.dispose();host.classList.remove('is-3d-ready');
+  environment?.dispose();renderer.dispose();setReady(false);
  };
  function schedule(){if(!raf&&!disposed&&!isDead()&&visible&&!lost&&!document.hidden){last=performance.now();raf=requestAnimationFrame(frame);}}
  function frame(now){
   raf=0;if(disposed||isDead()||!canvas.isConnected){cleanup();return;}if(!visible||document.hidden||lost)return;
   const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;const moving=!reduced();if(moving)time+=dt;
   pointer.lerp(targetPointer,1-Math.exp(-dt*3));drawScene(time,moving?dt:0,pointer,first);renderer.render(scene,camera);
-  if(first){first=false;host.classList.add('is-3d-ready');}
+  if(first){first=false;setReady(true);}
   if(moving)raf=requestAnimationFrame(frame);
  }
  function resizeScene(){
@@ -71,7 +73,7 @@ async function mount(canvas,isDead){
  const visibility=()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0;}else schedule();};
  const motion=()=>schedule();
  const greet=()=>{if(!guide||disposed)return;if(time-lastHello>.55){guide.greet(time);lastHello=time;}host.classList.add('is-greeting');clearTimeout(greetingTimer);greetingTimer=setTimeout(()=>host.classList.remove('is-greeting'),4200);schedule();};
- const contextLost=e=>{e.preventDefault();lost=true;cancelAnimationFrame(raf);raf=0;host.classList.remove('is-3d-ready');};
+ const contextLost=e=>{e.preventDefault();lost=true;cancelAnimationFrame(raf);raf=0;setReady(false);};
  try{
   if(mode==='guide'){guide=createStarChild(T,scene,camera,{reduced});drawScene=guide.update;}
   else{

@@ -1,7 +1,7 @@
-import {cockpitDashboard} from './holograms.js?v=20261022-starchild';
-import {extraProfileFields,patientProfileForms} from './views-extra.js?v=20261022-starchild';
-import {state,api,icon,t,esc,asset,button,navLink,badge,empty,field,textarea,select,check,pageHead,planetImage,initials,fmtDate,special,statusLabel} from './core.js?v=20261022-starchild';
-import {orbitMap} from './views-public.js?v=20261022-starchild';
+import {cockpitDashboard} from './holograms.js?v=20261022-final';
+import {extraProfileFields,patientProfileForms} from './views-extra.js?v=20261022-final';
+import {state,api,icon,t,esc,asset,button,navLink,badge,empty,field,textarea,select,check,pageHead,planetImage,initials,fmtDate,special,statusLabel} from './core.js?v=20261022-final';
+import {orbitMap} from './views-public.js?v=20261022-final';
 
 export function appShell(content,page){
  const u=state.user;
