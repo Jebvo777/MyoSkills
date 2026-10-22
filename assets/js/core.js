@@ -1,11 +1,11 @@
-import {icon} from './icons.js?v=20261012-cockpit';
-import {t,lang,setLang} from './i18n.js?v=20261012-cockpit';
+import {icon} from './icons.js?v=20261022-uikit';
+import {t,lang,setLang} from './i18n.js?v=20261022-uikit';
 export {icon,t,lang,setLang};
 export const state={...window.MYO_BOOT,public:null,dashboard:null,route:{},navigate:null,cleanup:[],modalCleanup:null};
 export const $=(selector,root=document)=>root.querySelector(selector);
 export const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261012-cockpit')}`:''}`;};
+export const asset=p=>{const path=String(p||'').replace(/^\//,'');return `${state.base}/${path}${path.startsWith('assets/')?`${path.includes('?')?'&':'?'}v=${encodeURIComponent(state.asset_version||'20261022-uikit')}`:''}`;};
 export const href=(page,params={})=>`${state.base}/index.php?${new URLSearchParams({page,...params})}`;
 export const go=(page,params={},flight=false)=>state.navigate(page,params,flight);
 export const fmtDate=(v,full=false)=>v?new Date(String(v).replace(' ','T')).toLocaleDateString(lang()==='en'?'en-GB':'ru-RU',{day:'numeric',month:'short',...(full?{year:'numeric'}:{})}):'—';
@@ -16,10 +16,15 @@ export const badge=(text,kind='')=>`<span class="badge ${esc(kind)}">${esc(text)
 export const button=(text,action,ic='arrow',cls='btn',attrs='')=>`<button type="button" class="${cls}" ${action?`data-action="${esc(action)}"`:''} ${attrs}>${esc(t(text))}${icon(ic)}</button>`;
 export const navLink=(text,page,ic='arrow',cls='btn',params={})=>`<a class="${cls}" data-nav="${esc(page)}" href="${href(page,params)}" ${Object.entries(params).map(([k,v])=>`data-${k.replace(/_/g,'-')}="${esc(v)}"`).join(' ')}>${esc(t(text))}${icon(ic)}</a>`;
 export const empty=(title,text,ic='orbit')=>`<div class="empty-state">${icon(ic)}<h3>${esc(t(title))}</h3><p>${esc(t(text))}</p></div>`;
-export const field=(label,name,value='',type='text',attrs='')=>`<label class="field"><span>${esc(t(label))}</span><input name="${esc(name)}" type="${type}" value="${esc(value)}" ${attrs}></label>`;
+export const field=(label,name,value='',type='text',attrs='')=>{
+ const password=type==='password',hint=password&&(/new-password|minlength=/.test(attrs));
+ const id=`field-${name.replace(/[^a-z0-9_-]/gi,'-')}`,placeholder=/placeholder=/.test(attrs)?'':' placeholder=" "';
+ const input=`<input name="${esc(name)}" type="${type}" value="${esc(value)}" ${attrs}${placeholder}${hint?` aria-describedby="${id}-hint"`:''}>`;
+ return `<label class="field"><span>${esc(t(label))}</span>${password?`<span class="input-wrap password-wrap">${input}<button type="button" data-action="password-visibility" class="password-visibility" aria-label="${t('Показать пароль')}" aria-pressed="false">${icon('eye-off')}</button></span>`:input}${hint?`<small id="${id}-hint" class="password-hint">${t('Не менее 10 символов')}</small>`:''}</label>`;
+};
 export const textarea=(label,name,value='',attrs='')=>`<label class="field"><span>${esc(t(label))}</span><textarea name="${esc(name)}" ${attrs}>${esc(value)}</textarea></label>`;
 export const select=(label,name,options,value='',attrs='')=>`<label class="field"><span>${esc(t(label))}</span><select name="${esc(name)}" ${attrs}>${options.map(([v,l])=>`<option value="${esc(v)}" ${String(v)===String(value)?'selected':''}>${esc(t(l))}</option>`).join('')}</select></label>`;
-export const check=(label,name,checked=false)=>`<label class="check-field"><input type="checkbox" name="${esc(name)}" ${checked?'checked':''}><span class="check-box">${icon('check')}</span><span>${esc(t(label))}</span></label>`;
+export const check=(label,name,checked=false,kind='check')=>`<label class="check-field ${kind==='switch'?'switch-field':''}"><input type="checkbox" name="${esc(name)}" ${kind==='switch'?'role="switch"':''} ${checked?'checked':''}><span class="check-box" aria-hidden="true"></span><span>${esc(t(label))}</span></label>`;
 export const formData=form=>{const fd=new FormData(form);const d=Object.fromEntries(fd.entries());for(const box of $$('input[type=checkbox]',form)) d[box.name]=box.checked;return d;};
 
 export function toast(message,kind='success'){

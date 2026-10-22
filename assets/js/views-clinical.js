@@ -1,6 +1,6 @@
-import {feedbackAdmin} from './views-extra.js?v=20261012-cockpit';
-import {state,api,icon,t,esc,asset,href,button,navLink,badge,empty,pageHead,initials,fmtDate,special,statusLabel,field,textarea,check,select} from './core.js?v=20261012-cockpit';
-import {appShell,missionCard,photosGrid,diaryView} from './views-patient.js?v=20261012-cockpit';
+import {feedbackAdmin} from './views-extra.js?v=20261022-uikit';
+import {state,api,icon,t,esc,asset,href,button,navLink,badge,empty,pageHead,initials,fmtDate,special,statusLabel,field,textarea,check,select} from './core.js?v=20261022-uikit';
+import {appShell,missionCard,photosGrid,diaryView} from './views-patient.js?v=20261022-uikit';
 const tabs=(items,page,active,params={})=>`<nav class="workspace-tabs" aria-label="${t('Обзор')}">${items.map(([tab,label])=>`<a class="${tab===active?'active':''}" data-nav="${page}" data-tab="${tab}" ${params.id?`data-id="${params.id}"`:''} href="${href(page,{...params,tab})}">${t(label)}</a>`).join('')}</nav>`;
 const summary=(items)=>`<section class="workspace-summary">${items.map(([label,num,ic])=>`<div class="summary-card"><span>${t(label)}${icon(ic)}</span><strong>${num}</strong></div>`).join('')}</section>`;
 export async function doctorView(params){

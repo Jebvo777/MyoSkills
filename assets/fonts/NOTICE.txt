@@ -1,0 +1,14 @@
+MyoSkills interface fonts
+
+TT Firs Neue — TypeType (https://typetype.org/fonts/tt-firs-neue/).
+Regular, Medium, Bold, ExtraBold and Black match the supplied Figma UI-kit.
+Files obtained from TypeType’s public specimen resources. This repository does
+not grant a font licence. Use on a deployed website is subject to the applicable
+TypeType webfont licence. Do not treat these files as open-source fonts.
+
+PT Root UI — ParaType (https://www.paratype.com/fonts/pt/pt-root-ui).
+Variable WOFF2 from the public ParaType font archive. SIL Open Font License 1.1:
+see PT-Root-UI-LICENSE.txt. The reserved font name remains unchanged.
+
+Exo 2 is retained for compatibility with earlier releases, and is no longer the
+active UI font. Its existing OFL notice is in OFL.txt.

@@ -1,16 +1,17 @@
-import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261012-cockpit';
-import {localizeStatic} from './i18n.js?v=20261012-cockpit';
-import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261012-cockpit';
-import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261012-cockpit';
-import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261012-cockpit';
-import {selectStory} from './views-extra.js?v=20261012-cockpit';
-import {initSpace,focusPlanet} from './space.js?v=20261012-cockpit';
+import {state,$,$$,esc,asset,href,icon,t,lang,setLang,api,go,toast,busy,modal,closeModal,upload,button,navLink,badge,field,textarea,select,check,formData,initials,fmtDate,special,statusLabel,baseEffects} from './core.js?v=20261022-uikit';
+import {localizeStatic} from './i18n.js?v=20261022-uikit';
+import {landing,directory,authView,infoView,defaultPlanets} from './views-public.js?v=20261022-uikit';
+import {dashboardView,galaxyView,patientPlanetDetail,missionView,diaryView,progressView,teamView,messagesView,profileView} from './views-patient.js?v=20261022-uikit';
+import {doctorView,patientRecordView,adminView} from './views-clinical.js?v=20261022-uikit';
+import {selectStory} from './views-extra.js?v=20261022-uikit';
+import {initSpace,focusPlanet} from './space.js?v=20261022-uikit';
+import {initUIKit} from './ui-kit.js?v=20261022-uikit';
 
 const protectedPages=['dashboard','galaxy','mission','diary','progress','team','messages','profile','doctor','patient','admin'];
 let renderSequence=0;
 const routeFromLocation=()=>Object.fromEntries(new URLSearchParams(location.search));
 function resetPage(){state.cleanup.splice(0).forEach(fn=>fn());if(state.recorder)stopRecorder();closeModal();}
-function applyMotion(){const saved=localStorage.getItem('myo-motion');document.documentElement.dataset.motion=saved||(state.user?.preferences?.reduced_motion||matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'on');}
+function applyMotion(){document.documentElement.dataset.motion=state.user?.preferences?.reduced_motion||matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'on';}
 state.navigate=async(page,params={},flight=false)=>{
  if(flight&&document.documentElement.dataset.motion!=='off'){$('#flight').classList.add('active');await new Promise(r=>setTimeout(r,800));$('#flight').classList.remove('active');}
  history.pushState({},'',href(page,params));await render({page,...params});window.scrollTo({top:0,behavior:'instant'});
@@ -40,7 +41,7 @@ async function render(route=routeFromLocation()){
    default:html=infoView(route.page);
   }
   if(seq!==renderSequence)return;
-  $('#app').innerHTML=html;$('#app').classList.remove('rendering');localizeStatic($('#app'));baseEffects();initSpace();bindPage(route);document.title=`MyoSkills · ${$('#main-content h1')?.textContent?.replace(/\s+/g,' ').trim()||t('Твой навык. Твоя галактика.')}`;
+  $('#app').innerHTML=html;$('#app').classList.remove('rendering');localizeStatic($('#app'));baseEffects();initSpace();initUIKit();bindPage(route);document.title=`MyoSkills · ${$('#main-content h1')?.textContent?.replace(/\s+/g,' ').trim()||t('Твой навык. Твоя галактика.')}`;
  }catch(e){
   if(seq!==renderSequence)return;
   $('#app').innerHTML=`<main class="public-page"><a class="brand" data-nav="home" href="${href('home')}">${icon('orbit')}MyoSkills</a><div class="empty-state" style="margin-top:80px">${icon('orbit')}<h1>${t('Не удалось открыть раздел')}</h1><p>${esc(e.message)}</p><div style="margin-top:25px">${navLink('Вернуться','home','back','btn btn-purple')}</div></div></main>`;$('#app').classList.remove('rendering');toast(e.message,'error');
@@ -72,9 +73,10 @@ document.addEventListener('click',async e=>{
  const d=el.dataset;
  switch(d.action){
   case 'language':setLang(lang()==='ru'?'en':'ru');render(state.route);break;
-  case 'motion':localStorage.setItem('myo-motion',document.documentElement.dataset.motion==='off'?'on':'off');applyMotion();toast(document.documentElement.dataset.motion==='off'?'Движение отключено':'Движение включено');render(state.route);break;
+  case 'password-visibility':{const input=el.closest('.password-wrap')?.querySelector('input');if(!input)break;const visible=input.type==='password';input.type=visible?'text':'password';el.setAttribute('aria-pressed',String(visible));el.setAttribute('aria-label',t(visible?'Скрыть пароль':'Показать пароль'));el.innerHTML=icon(visible?'eye':'eye-off');break;}
+  case 'add-clinic':{const inputs=$('#clinic-inputs');if(!inputs)break;const count=$$('[data-clinic-input]',inputs).length;if(count>=10)break;inputs.insertAdjacentHTML('beforeend',field(`${t('Клиника')} ${count+1}`,`clinic_${count+1}`,'','text','data-clinic-input maxlength="180"'));inputs.lastElementChild.querySelector('input').focus();if(count+1>=10)el.disabled=true;break;}
   case 'modal-close':closeModal();break;
-  case 'sidebar-toggle':$('.sidebar')?.classList.toggle('open');break;
+  case 'sidebar-toggle':{const open=$('.sidebar')?.classList.toggle('open');$('[data-action="sidebar-toggle"]', $('.app-topbar'))?.setAttribute('aria-expanded',String(Boolean(open)));break;}
   case 'mobile-menu':modal('Главная',`<nav class="mobile-menu-list">${['home','specialists','about','contacts','tools','pricing'].map((p,i)=>navLink(['Главная','Специалисты','О сервисе','Контакты','Инструменты','Тарифы'][i],p,'arrow','icon-text')).join('')}</nav>`);break;
   case 'logout':await busy(el,async()=>{await api('auth.logout',{});state.user=null;state.dashboard=null;go('home');});break;
   case 'demo-login':await busy(el,async()=>{const r=await api('auth.login',{email:d.email,password:'MyoDemo!2026'});state.user=r.user;go(homeForRole());});break;
@@ -133,12 +135,14 @@ document.addEventListener('submit',async e=>{
   case 'auth-form':{
    const page=form.dataset.type;const action=page==='register'?'auth.register':page==='forgot'?'auth.forgot':page==='reset'?'auth.reset':'auth.login';
    if(page==='reset')data.token=state.route.token;
+   if(page==='register')data.language=lang();
    let r;try{r=await api(action,data);}catch(err){$('.form-error',form).textContent=t(err.message);throw err;}
-   if(r.user){state.user=r.user;go(homeForRole());}else{toast(r.message);if(page==='reset')go('login');}break;
+   if(r.user){state.user=r.user;go(page==='register'?'profile':homeForRole(),page==='register'?{setup:'1'}:{});}else{toast(r.message);if(page==='reset')go('login');}break;
   }
   case 'profile-form':{
    const preferences={email:data.email_notifications,reminders:data.reminders,reduced_motion:data.reduced_motion,voice_instructions:data.voice_instructions,public_email:data.public_email,public_phone:data.public_phone,public_social:data.public_social,language:lang()};
-   state.user=await api('account.update',{...data,clinics:String(data.clinics||'').split('\n').map(x=>x.trim()).filter(Boolean),preferences});localStorage.setItem('myo-motion',preferences.reduced_motion?'off':'on');toast('Профиль сохранён');render(state.route);break;
+   const clinics=state.user.role==='doctor'?$$('[data-clinic-input]',form).map(input=>input.value.trim()).filter(Boolean):(state.user.clinics||[]);
+   state.user=await api('account.update',{...data,clinic:state.user.role==='doctor'?(clinics[0]||''):(state.user.clinic||''),clinics,preferences});toast('Профиль сохранён');render(state.route);break;
   }
   case 'password-form':await api('account.password',data);form.reset();toast('Пароль изменён');break;
   case 'invite-claim-form':await api('invitation.accept',data);form.reset();toast('Приглашение принято');render(state.route);break;
@@ -172,7 +176,7 @@ document.addEventListener('submit',async e=>{
 });
 document.addEventListener('change',async e=>{
  const el=e.target;
- if(el.name==='role'&&el.closest('#auth-form')){const doc=el.value==='doctor';$('.doctor-register-fields').hidden=!doc;$('.patient-register-fields').hidden=doc;}
+ if(el.name==='role'&&el.closest('#auth-form')){const patientFields=$('.patient-register-fields');if(patientFields){patientFields.hidden=el.value==='doctor';$$('input',patientFields).forEach(input=>input.disabled=el.value==='doctor');}}
  if(el.id==='mission-video-file'&&el.files[0])selectVideo(el.files[0]);
  if(el.id==='specialist-type')filterSpecialists();
  if(el.id==='compare-left')$('#compare-img-left').src=asset('media.php?id='+Number(el.value));

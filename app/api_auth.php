@@ -26,26 +26,30 @@ function api_auth(string $action): bool {
         write_guard(); $_SESSION=[]; session_regenerate_id(true); json_response(['csrf'=>csrf_token()]);
     case 'auth.register':
         write_guard(); $d=input();
-        $name=required($d,'name',160); $email=mb_strtolower(required($d,'email',190)); $password=required($d,'password',128);
+        $name=value($d,'name',160); $email=mb_strtolower(required($d,'email',190)); $password=required($d,'password',128);
+        $phone=required($d,'phone',40);$digits=preg_replace('/\D+/','',$phone);
+        if(strlen($digits)<7 || strlen($digits)>15) fail('Укажите корректный номер телефона');
         if(!filter_var($email,FILTER_VALIDATE_EMAIL)) fail('Укажите корректную почту');
         if(mb_strlen($password)<10) fail('Пароль должен содержать минимум 10 символов');
         if(empty($d['consent'])) fail('Подтвердите согласие с правилами и обработкой данных');
         $role=value($d,'role',20,'patient'); if(!in_array($role,['patient','doctor'],true)) fail('Недопустимая роль');
         $spec=value($d,'specialty',40);
-        if($role==='doctor' && !in_array($spec,['myotherapist','orthodontist','ent','osteopath','kinesiologist','neurologist'],true)) fail('Выберите специальность');
+        if($role==='doctor' && $spec!=='' && !in_array($spec,['myotherapist','orthodontist','ent','osteopath','kinesiologist','neurologist'],true)) fail('Выберите специальность');
         $existing=one('SELECT * FROM users WHERE email=?',[$email]);
+        if($name==='') $name=$existing['name']??($role==='doctor'?'Новый специалист':'Новый участник');
         $code=value($d,'access_code',40);
-        $id=transaction(function() use($d,$name,$email,$password,$role,$spec,$existing,$code) {
+        $id=transaction(function() use($d,$name,$email,$phone,$password,$role,$spec,$existing,$code) {
             if($existing) {
                 $inv=one('SELECT * FROM patients WHERE user_id=? AND access_code=? AND claimed=0'.lock_suffix(),[$existing['id'],$code]);
                 if(!$inv || !$code || $role!=='patient') fail('Эта почта уже зарегистрирована. Используйте вход или восстановление пароля.');
-                sql('UPDATE users SET name=?,password_hash=?,consent_at=? WHERE id=?',[$name,password_hash($password,PASSWORD_DEFAULT),now(),$existing['id']]);
+                sql('UPDATE users SET name=?,phone=?,password_hash=?,consent_at=? WHERE id=?',[$name,$phone,password_hash($password,PASSWORD_DEFAULT),now(),$existing['id']]);
                 sql('UPDATE patients SET claimed=1 WHERE user_id=?',[$existing['id']]);
                 return (int)$existing['id'];
             }
             if($code) fail('Код приглашения и почта должны совпадать с данными, которые внёс врач');
             $clinics=profile_clinics($d['clinics']??[]);
-            $id=insert('users',['email'=>$email,'password_hash'=>password_hash($password,PASSWORD_DEFAULT),'name'=>$name,'role'=>$role,'specialty'=>$role==='doctor'?$spec:'','phone'=>value($d,'phone',40),'city'=>value($d,'city',100),'clinic'=>value($d,'clinic',180),'clinics_json'=>json_encode($clinics,JSON_UNESCAPED_UNICODE),'social_url'=>http_url(value($d,'social_url',255)),'about'=>'','consent_at'=>now(),'created_at'=>now()]);
+            $preferences=['onboarding_complete'=>false,'language'=>value($d,'language',2,'ru')==='en'?'en':'ru'];
+            $id=insert('users',['email'=>$email,'password_hash'=>password_hash($password,PASSWORD_DEFAULT),'name'=>$name,'role'=>$role,'specialty'=>$role==='doctor'?$spec:'','phone'=>$phone,'city'=>value($d,'city',100),'clinic'=>value($d,'clinic',180),'clinics_json'=>json_encode($clinics,JSON_UNESCAPED_UNICODE),'social_url'=>http_url(value($d,'social_url',255)),'about'=>'','preferences_json'=>json_encode($preferences),'consent_at'=>now(),'created_at'=>now()]);
             if($role==='patient') insert('patients',['user_id'=>$id,'access_code'=>'MYO-'.strtoupper(bin2hex(random_bytes(12))),'claimed'=>1,'started_at'=>today()]);
             notification($id,'welcome',$role==='doctor'?'Добро пожаловать на борт, доктор':'Твоя галактика ждёт','Заполни профиль и начни знакомство с сервисом.','?page=profile');
             return $id;
@@ -79,12 +83,18 @@ function api_auth(string $action): bool {
         write_guard(); $u=require_user(); $d=input();
         $clinics=profile_clinics($d['clinics']??[]);
         $pref=$d['preferences']??[]; if(!is_array($pref)) fail('Неверные настройки');
-        $preferences=['email'=>!empty($pref['email']),'reminders'=>!empty($pref['reminders']),'reduced_motion'=>!empty($pref['reduced_motion']),'voice_instructions'=>!empty($pref['voice_instructions']),'language'=>($pref['language']??'ru')==='en'?'en':'ru'];
+        $preferences=['email'=>!empty($pref['email']),'reminders'=>!empty($pref['reminders']),'reduced_motion'=>!empty($pref['reduced_motion']),'voice_instructions'=>!empty($pref['voice_instructions']),'language'=>($pref['language']??'ru')==='en'?'en':'ru','onboarding_complete'=>true];
+        $specialty=$u['specialty'];
+        if($u['role']==='doctor') {
+            $specialty=value($d,'specialty',40,$specialty);
+            if(!in_array($specialty,['myotherapist','orthodontist','ent','osteopath','kinesiologist','neurologist'],true)) fail('Выберите специальность');
+            if($u['verified'] && $specialty!==$u['specialty']) fail('Для смены специальности обратитесь к администратору');
+        }
         foreach(['public_email','public_phone','public_social'] as $key)$preferences[$key]=!array_key_exists($key,$pref)||!empty($pref[$key]);
         $lat=$u['role']==='doctor'?coordinate($d['latitude']??$u['latitude'],90):null;
         $lng=$u['role']==='doctor'?coordinate($d['longitude']??$u['longitude'],180):null;
         if(($lat===null)!==($lng===null)) fail('Укажите широту и долготу вместе');
-        sql('UPDATE users SET name=?,phone=?,city=?,clinic=?,about=?,social_url=?,education=?,hobbies=?,latitude=?,longitude=?,contact_public=?,clinics_json=?,preferences_json=? WHERE id=?',[required($d,'name',160),value($d,'phone',40),value($d,'city',100),value($d,'clinic',180),value($d,'about',3000),http_url(value($d,'social_url',255)),$u['role']==='doctor'?value($d,'education',4000):'',value($d,'hobbies',500),$lat,$lng,!empty($d['contact_public'])?1:0,json_encode($clinics,JSON_UNESCAPED_UNICODE),json_encode($preferences),$u['id']]);
+        sql('UPDATE users SET name=?,phone=?,city=?,clinic=?,about=?,social_url=?,education=?,hobbies=?,latitude=?,longitude=?,contact_public=?,clinics_json=?,preferences_json=?,specialty=? WHERE id=?',[required($d,'name',160),value($d,'phone',40),value($d,'city',100),value($d,'clinic',180),value($d,'about',3000),http_url(value($d,'social_url',255)),$u['role']==='doctor'?value($d,'education',4000):'',value($d,'hobbies',500),$lat,$lng,!empty($d['contact_public'])?1:0,json_encode($clinics,JSON_UNESCAPED_UNICODE),json_encode($preferences),$specialty,$u['id']]);
         audit($u,'profile.update'); json_response(public_user(require_user(),true));
     case 'account.password':
         write_guard(); $u=require_user(); $d=input();

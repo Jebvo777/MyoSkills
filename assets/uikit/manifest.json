@@ -1,0 +1,223 @@
+{
+  "figma_file": "A6PJiTYXdiA4dyDFNdeCxk",
+  "method": "Original SVG_STRING exports; intrinsic dimensions preserved",
+  "assets": [
+    {
+      "file": "arrow-mint.svg",
+      "node": "16:123",
+      "width": "13",
+      "height": "13",
+      "viewBox": "0 0 13 13"
+    },
+    {
+      "file": "arrow-muted.svg",
+      "node": "16:126",
+      "width": "13",
+      "height": "13",
+      "viewBox": "0 0 13 13"
+    },
+    {
+      "file": "arrow.svg",
+      "node": "16:52",
+      "width": "13",
+      "height": "13",
+      "viewBox": "0 0 13 13"
+    },
+    {
+      "file": "bell.svg",
+      "node": "32:225",
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20"
+    },
+    {
+      "file": "card-video.svg",
+      "node": "24:342",
+      "width": "70",
+      "height": "70",
+      "viewBox": "0 0 70 70"
+    },
+    {
+      "file": "checkbox-on.svg",
+      "node": "16:206",
+      "width": "25",
+      "height": "25",
+      "viewBox": "0 0 25 25"
+    },
+    {
+      "file": "corner-mint.svg",
+      "node": "16:95",
+      "width": "9",
+      "height": "9",
+      "viewBox": "0 0 9 9"
+    },
+    {
+      "file": "corner-muted.svg",
+      "node": "16:100",
+      "width": "9",
+      "height": "9",
+      "viewBox": "0 0 9 9"
+    },
+    {
+      "file": "corner-violet.svg",
+      "node": "16:55",
+      "width": "9",
+      "height": "9",
+      "viewBox": "0 0 9 9"
+    },
+    {
+      "file": "corner-white.svg",
+      "node": "16:90",
+      "width": "9",
+      "height": "9",
+      "viewBox": "0 0 9 9"
+    },
+    {
+      "file": "direction.svg",
+      "node": "32:223",
+      "width": "20",
+      "height": "12",
+      "viewBox": "0 0 20 12"
+    },
+    {
+      "file": "eye-off.svg",
+      "node": "16:224",
+      "width": "20",
+      "height": "18",
+      "viewBox": "0 0 20 18"
+    },
+    {
+      "file": "faq-plus-mobile.svg",
+      "node": "16:247",
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20"
+    },
+    {
+      "file": "faq-plus.svg",
+      "node": "16:244",
+      "width": "25",
+      "height": "25",
+      "viewBox": "0 0 25 25"
+    },
+    {
+      "file": "language-circle.svg",
+      "node": "24:482",
+      "width": "50",
+      "height": "50",
+      "viewBox": "0 0 50 50"
+    },
+    {
+      "file": "logout.svg",
+      "node": "32:276",
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20"
+    },
+    {
+      "file": "message.svg",
+      "node": "32:227",
+      "width": "20",
+      "height": "19",
+      "viewBox": "0 0 20 19"
+    },
+    {
+      "file": "mobile-menu.svg",
+      "node": "24:496",
+      "width": "50",
+      "height": "50",
+      "viewBox": "0 0 50 50"
+    },
+    {
+      "file": "people.svg",
+      "node": "28:1023",
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20"
+    },
+    {
+      "file": "radio-off.svg",
+      "node": "16:201",
+      "width": "25",
+      "height": "25",
+      "viewBox": "0 0 25 25"
+    },
+    {
+      "file": "radio-on.svg",
+      "node": "16:196",
+      "width": "25",
+      "height": "25",
+      "viewBox": "0 0 25 25"
+    },
+    {
+      "file": "review-avatar.svg",
+      "node": "I16:301;43:630",
+      "width": "70",
+      "height": "70",
+      "viewBox": "0 0 70 70"
+    },
+    {
+      "file": "review-stars.svg",
+      "node": "I16:301;43:622",
+      "width": "137",
+      "height": "25",
+      "viewBox": "0 0 137 25"
+    },
+    {
+      "file": "search.svg",
+      "node": "16:330",
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20"
+    },
+    {
+      "file": "select-chevron.svg",
+      "node": "16:235",
+      "width": "11",
+      "height": "9",
+      "viewBox": "0 0 11 9"
+    },
+    {
+      "file": "settings.svg",
+      "node": "32:268",
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20"
+    },
+    {
+      "file": "slider-knob.svg",
+      "node": "19:224",
+      "width": "31",
+      "height": "31",
+      "viewBox": "0 0 31 31"
+    },
+    {
+      "file": "ticker-dot.svg",
+      "node": "18:21",
+      "width": "10",
+      "height": "10",
+      "viewBox": "0 0 10 10"
+    },
+    {
+      "file": "toggle-off.svg",
+      "node": "16:265",
+      "width": "53",
+      "height": "25",
+      "viewBox": "0 0 53 25"
+    },
+    {
+      "file": "toggle-on.svg",
+      "node": "16:261",
+      "width": "53",
+      "height": "25",
+      "viewBox": "0 0 53 25"
+    },
+    {
+      "file": "video.svg",
+      "node": "32:214",
+      "width": "20",
+      "height": "12",
+      "viewBox": "0 0 20 12"
+    }
+  ]
+}
