@@ -3,8 +3,8 @@ declare(strict_types=1);
 function api_auth(string $action): bool {
     switch($action) {
     case 'public':
-        $doctors=array_map(fn($r)=>public_user($r),many("SELECT * FROM users WHERE role='doctor' AND verified=1 AND active=1 ORDER BY name"));
-        json_response(['planets'=>many('SELECT * FROM planets ORDER BY sort_order'), 'specialists'=>$doctors,'settings'=>settings(),'pages'=>many('SELECT * FROM content_pages WHERE active=1 ORDER BY sort_order'),'documents'=>many("SELECT id,original_name,note,mime_type FROM media WHERE category='site' AND is_public=1 ORDER BY id DESC"),'testimonials'=>many("SELECT t.id,t.author_name,t.rating,t.body,t.is_demo,t.created_at FROM testimonials t JOIN users u ON u.id=t.patient_id WHERE t.status='approved' AND u.active=1 ORDER BY t.id DESC LIMIT 20"),'demo_labels'=>(bool)config('demo_labels')]);
+        $doctors=array_map(fn($r)=>public_user($r),many("SELECT * FROM users WHERE role='doctor' AND verified=1 AND active=1 AND email NOT LIKE '%@myoskills.test' ORDER BY name"));
+        json_response(['planets'=>many('SELECT * FROM planets ORDER BY sort_order'), 'specialists'=>$doctors,'settings'=>settings(),'pages'=>many('SELECT * FROM content_pages WHERE active=1 ORDER BY sort_order'),'documents'=>many("SELECT id,original_name,note,mime_type FROM media WHERE category='site' AND is_public=1 ORDER BY id DESC"),'testimonials'=>many("SELECT t.id,t.author_name,t.rating,t.body,t.created_at FROM testimonials t JOIN users u ON u.id=t.patient_id WHERE t.status='approved' AND u.active=1 ORDER BY t.id DESC LIMIT 20")]);
     case 'auth.me':
         $u=user(); json_response(['user'=>$u?public_user($u,true):null,'csrf'=>csrf_token()]);
     case 'auth.login':
@@ -13,7 +13,7 @@ function api_auth(string $action): bool {
         $since=date('Y-m-d H:i:s',strtotime('-15 minutes'));
         if((int)one('SELECT COUNT(*) n FROM login_attempts WHERE identity_hash=? AND attempted_at>?',[$key,$since])['n']>=10) fail('Слишком много попыток. Повторите через 15 минут.',429);
         $u=one('SELECT * FROM users WHERE email=? AND active=1',[$email]);
-        if(!$u || !password_verify($password,$u['password_hash'])){ insert('login_attempts',['identity_hash'=>$key,'attempted_at'=>now()]); fail('Неверная почта или пароль',401); }
+        if(!$u || !production_identity($u) || !password_verify($password,$u['password_hash'])){ insert('login_attempts',['identity_hash'=>$key,'attempted_at'=>now()]); fail('Неверная почта или пароль',401); }
         sql('DELETE FROM login_attempts WHERE identity_hash=?',[$key]);
         if($u['role']==='patient') sql('UPDATE patients SET claimed=1 WHERE user_id=?',[$u['id']]);
         if(password_needs_rehash($u['password_hash'],PASSWORD_DEFAULT)) {
@@ -29,7 +29,7 @@ function api_auth(string $action): bool {
         $name=value($d,'name',160); $email=mb_strtolower(required($d,'email',190)); $password=required($d,'password',128);
         $phone=required($d,'phone',40);$digits=preg_replace('/\D+/','',$phone);
         if(strlen($digits)<7 || strlen($digits)>15) fail('Укажите корректный номер телефона');
-        if(!filter_var($email,FILTER_VALIDATE_EMAIL)) fail('Укажите корректную почту');
+        if(!filter_var($email,FILTER_VALIDATE_EMAIL) || !production_identity(['email'=>$email])) fail('Укажите действующую почту');
         if(mb_strlen($password)<10) fail('Пароль должен содержать минимум 10 символов');
         if(empty($d['consent'])) fail('Подтвердите согласие с правилами и обработкой данных');
         $role=value($d,'role',20,'patient'); if(!in_array($role,['patient','doctor'],true)) fail('Недопустимая роль');

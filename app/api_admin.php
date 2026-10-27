@@ -5,7 +5,7 @@ function api_admin(string $action): bool {
     $u=require_user(['admin']);
     switch($action) {
     case 'admin.dashboard':
-        $users=many('SELECT id,email,name,role,specialty,verified,active,city,clinic,created_at FROM users ORDER BY id DESC');
+        $users=many("SELECT id,email,name,role,specialty,verified,active,city,clinic,created_at FROM users WHERE email NOT LIKE '%@myoskills.test' ORDER BY id DESC");
         json_response(['testimonials'=>many('SELECT * FROM testimonials ORDER BY id DESC'),'assets'=>many("SELECT id,original_name,note,mime_type,is_public FROM media WHERE category='site' ORDER BY id DESC"),'users'=>$users,'pages'=>many('SELECT * FROM content_pages ORDER BY sort_order'),'exercises'=>many('SELECT e.*,p.title planet_title,p.color FROM exercises e JOIN planets p ON p.id=e.planet_id ORDER BY p.sort_order,e.level'),'planets'=>many('SELECT * FROM planets ORDER BY sort_order'),'documents'=>many("SELECT m.id,m.owner_id,m.original_name,m.created_at,u.name,u.specialty,u.verified FROM media m JOIN users u ON u.id=m.owner_id WHERE m.category='diploma' ORDER BY m.id DESC"),'settings'=>settings(),'audit'=>many('SELECT a.*,u.name FROM audit_logs a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 100'),'totals'=>['users'=>count($users),'patients'=>(int)one('SELECT COUNT(*) n FROM patients')['n'],'submissions'=>(int)one("SELECT COUNT(*) n FROM submissions WHERE status='pending'")['n']+ (int)one("SELECT COUNT(*) n FROM submissions WHERE status!='pending'")['n'],'pending'=>(int)one("SELECT COUNT(*) n FROM submissions WHERE status='pending'")['n']]]);
     case 'admin.page.save':
         write_guard();$d=input();$slug=required($d,'slug',80);if(!preg_match('/^[a-z0-9][a-z0-9-]{1,79}$/',$slug))fail('Адрес страницы: латиница, цифры и дефис');
@@ -16,7 +16,7 @@ function api_admin(string $action): bool {
         else $id=insert('content_pages',$values);
         audit($u,'admin.page.save','page',$id);json_response(['id'=>$id]);
     case 'admin.user.save':
-        write_guard(); $d=input(); $id=ident($d['id']??0); $old=one('SELECT * FROM users WHERE id=?',[$id]); if(!$old) fail('Пользователь не найден');
+        write_guard(); $d=input(); $id=ident($d['id']??0); $old=one('SELECT * FROM users WHERE id=?',[$id]); if(!$old || !production_identity($old)) fail('Пользователь не найден');
         $active=!empty($d['active'])?1:0; $verified=!empty($d['verified'])?1:0;
         if($id===(int)$u['id'] && !$active) fail('Нельзя отключить собственный аккаунт');
         if($verified && $old['role']==='doctor' && !$old['verified'] && !one("SELECT id FROM media WHERE owner_id=? AND category='diploma'",[$id])) fail('Для верификации нужен загруженный документ специалиста');
@@ -29,7 +29,7 @@ function api_admin(string $action): bool {
         $steps=array_map(fn($s)=>mb_substr(trim((string)$s),0,1000),$steps);
         $mid=!empty($d['video_media_id'])?ident($d['video_media_id']):null;
         if($mid&&!one("SELECT id FROM media WHERE id=? AND category='exercise'",[$mid])) fail('Выберите видео из библиотеки');
-        $values=['planet_id'=>$pid,'title'=>required($d,'title',160),'description'=>value($d,'description',7000),'steps_json'=>json_encode($steps,JSON_UNESCAPED_UNICODE),'level'=>max(1,min(10,(int)($d['level']??1))),'duration_seconds'=>max(10,min(3600,(int)($d['duration_seconds']??60))),'repetitions'=>value($d,'repetitions',60),'video_media_id'=>$mid,'video_path'=>$mid?'':'assets/demo-mission.mp4','active'=>!empty($d['active'])?1:0];
+        $values=['planet_id'=>$pid,'title'=>required($d,'title',160),'description'=>value($d,'description',7000),'steps_json'=>json_encode($steps,JSON_UNESCAPED_UNICODE),'level'=>max(1,min(10,(int)($d['level']??1))),'duration_seconds'=>max(10,min(3600,(int)($d['duration_seconds']??60))),'repetitions'=>value($d,'repetitions',60),'video_media_id'=>$mid,'video_path'=>'','active'=>!empty($d['active'])?1:0];
         if(!empty($d['id'])) { $id=ident($d['id']); if(!one('SELECT id FROM exercises WHERE id=?',[$id])) fail('Упражнение не найдено'); $sets=[];foreach($values as $k=>$v)$sets[]=$k.'=?'; sql('UPDATE exercises SET '.implode(',',$sets).' WHERE id=?',[...array_values($values),$id]); }
         else {$values['created_by']=$u['id'];$values['created_at']=now();$id=insert('exercises',$values);}
         audit($u,'admin.exercise.save','exercise',$id); json_response(['id'=>$id]);

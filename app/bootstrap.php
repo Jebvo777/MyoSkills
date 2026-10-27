@@ -114,12 +114,15 @@ function write_guard(): void {
     $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? (input()['csrf'] ?? '');
     if (!is_string($token) || !hash_equals(csrf_token(),$token)) fail('Обновите страницу и повторите действие',419);
 }
+function production_identity(array $u): bool {
+    return !str_ends_with(mb_strtolower((string)($u['email']??'')), '@myoskills.test');
+}
 function user(): ?array {
     $id=$_SESSION['uid']??0;
     if(!$id) return null;
     $u=one('SELECT * FROM users WHERE id=? AND active=1',[(int)$id]);
     $tag=$_SESSION['credential_tag']??'';
-    if(!$u || !is_string($tag) || !hash_equals(hash('sha256',$u['password_hash']),$tag)) {
+    if(!$u || !production_identity($u) || !is_string($tag) || !hash_equals(hash('sha256',$u['password_hash']),$tag)) {
         unset($_SESSION['uid'],$_SESSION['credential_tag']);
         return null;
     }

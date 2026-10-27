@@ -214,7 +214,6 @@ CREATE TABLE IF NOT EXISTS testimonials (
  rating INT NOT NULL DEFAULT 5,
  body TEXT NOT NULL,
  status VARCHAR(20) NOT NULL DEFAULT 'pending',
- is_demo TINYINT NOT NULL DEFAULT 0,
  created_at DATETIME NOT NULL,
  updated_at DATETIME NOT NULL,
  FOREIGN KEY (patient_id) REFERENCES patients(user_id) ON DELETE CASCADE

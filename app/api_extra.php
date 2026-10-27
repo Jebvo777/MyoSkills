@@ -42,7 +42,7 @@ function api_extra(string $action): bool {
         $name=required($d,'author_name',100);$body=required($d,'body',3000);$rating=filter_var($d['rating']??5,FILTER_VALIDATE_INT);
         if($rating===false||$rating<1||$rating>5)fail('Оценка от 1 до 5');
         transaction(function() use($u,$name,$body,$rating){
-            sql("INSERT INTO testimonials (patient_id,author_name,rating,body,status,is_demo,created_at,updated_at) VALUES (?,?,?,?,'pending',?,?,?) ON DUPLICATE KEY UPDATE author_name=?,rating=?,body=?,status='pending',updated_at=?",[$u['id'],$name,$rating,$body,config('demo_labels')?1:0,now(),now(),$name,$rating,$body,now()]);
+            sql("INSERT INTO testimonials (patient_id,author_name,rating,body,status,created_at,updated_at) VALUES (?,?,?,?,'pending',?,?) ON DUPLICATE KEY UPDATE author_name=?,rating=?,body=?,status='pending',updated_at=?",[$u['id'],$name,$rating,$body,now(),now(),$name,$rating,$body,now()]);
             foreach(many("SELECT id FROM users WHERE role='admin' AND active=1") as $a)notification((int)$a['id'],'testimonial','Новый отзыв на модерации',$name,'?page=admin&tab=feedback');
             audit($u,'testimonial.submit');
         });json_response(['message'=>'Отзыв отправлен на модерацию']);
