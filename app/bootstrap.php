@@ -179,12 +179,13 @@ function patient_access(int $patientId, array $u, bool $history = false): array 
 function patient_id(array $u, array $data = []): int { return $u['role']==='patient' ? (int)$u['id'] : ident($data['patient_id'] ?? $_GET['patient_id'] ?? 0); }
 function audit(array $u, string $action, string $type='', ?int $id=null): void { insert('audit_logs',['user_id'=>$u['id'],'action'=>$action,'resource_type'=>$type,'resource_id'=>$id,'created_at'=>now()]); }
 function notification(int $userId,string $type,string $title,string $body='',string $link=''): void {
+    $recipient=one('SELECT email,preferences_json,archived_at FROM users WHERE id=? AND active=1',[$userId]);
+    if(!$recipient || !account_available($recipient)) return;
     insert('notifications',['user_id'=>$userId,'type'=>$type,'title'=>$title,'body'=>$body,'link'=>$link,'created_at'=>now()]);
     if(config('mail.enabled')) {
-        $recipient=one('SELECT email,preferences_json FROM users WHERE id=? AND active=1',[$userId]);
         $prefs=json_decode($recipient['preferences_json']??'{}',true)?:[];
         $from=(string)config('mail.from');
-        if($recipient && !empty($prefs['email']) && filter_var($from,FILTER_VALIDATE_EMAIL)) {
+        if(!empty($prefs['email']) && function_exists('mail') && filter_var($from,FILTER_VALIDATE_EMAIL)) {
             $message=$title."\n\n".$body."\n\n".rtrim((string)config('app_url'),'/').'/index.php'.($link?:'');
             $subject='=?UTF-8?B?'.base64_encode('MyoSkills · '.$title).'?=';
             @mail($recipient['email'],$subject,$message,"From: ".$from."\r\nContent-Type: text/plain; charset=UTF-8");
@@ -200,13 +201,13 @@ function reward(int $patientId,int $assignmentId,string $day,string $kind,int $p
     catch(PDOException $e) { if((string)$e->getCode()==='23000') return false; throw $e; }
 }
 function stats(int $id): array {
-    $r=one("SELECT COALESCE(SUM(CASE WHEN kind='fuel' THEN points ELSE 0 END),0) fuel, COALESCE(SUM(CASE WHEN kind='xp' THEN points ELSE 0 END),0) xp FROM rewards WHERE patient_id=?",[$id]);
-    $days=array_column(many('SELECT DISTINCT practice_day FROM practices WHERE patient_id=? ORDER BY practice_day DESC',[$id]),'practice_day');
+    $r=one("SELECT COALESCE(SUM(CASE WHEN r.kind='fuel' THEN r.points ELSE 0 END),0) fuel, COALESCE(SUM(CASE WHEN r.kind='xp' THEN r.points ELSE 0 END),0) xp FROM rewards r JOIN assignments a ON a.id=r.assignment_id JOIN exercises e ON e.id=a.exercise_id WHERE r.patient_id=? AND e.archived_at IS NULL",[$id]);
+    $days=array_column(many('SELECT DISTINCT pr.practice_day FROM practices pr JOIN exercises e ON e.id=pr.exercise_id WHERE pr.patient_id=? AND e.archived_at IS NULL ORDER BY pr.practice_day DESC',[$id]),'practice_day');
     $cursor=today(); $streak=0;
     if(!in_array($cursor,$days,true)) $cursor=date('Y-m-d',strtotime('-1 day'));
     while(in_array($cursor,$days,true)){ $streak++; $cursor=date('Y-m-d',strtotime($cursor.' -1 day')); }
     $xp=(int)$r['xp'];
-    return ['fuel'=>(int)$r['fuel'],'xp'=>$xp,'stars'=>(int)floor($xp/25),'streak'=>$streak,'rank'=>$xp>=750?'Капитан галактики':($xp>=250?'Исследователь':($xp>=75?'Пилот':'Космический стажёр')),'next_rank'=>$xp>=750?1500:($xp>=250?750:($xp>=75?250:75)), 'today_count'=>(int)one('SELECT COUNT(*) n FROM practices WHERE patient_id=? AND practice_day=?',[$id,today()])['n'],'approved'=>(int)one('SELECT COUNT(*) n FROM submissions WHERE patient_id=? AND status=?',[$id,'approved'])['n']];
+    return ['fuel'=>(int)$r['fuel'],'xp'=>$xp,'stars'=>(int)floor($xp/25),'streak'=>$streak,'rank'=>$xp>=750?'Капитан галактики':($xp>=250?'Исследователь':($xp>=75?'Пилот':'Космический стажёр')),'next_rank'=>$xp>=750?1500:($xp>=250?750:($xp>=75?250:75)), 'today_count'=>(int)one('SELECT COUNT(*) n FROM practices pr JOIN exercises e ON e.id=pr.exercise_id WHERE pr.patient_id=? AND pr.practice_day=? AND e.archived_at IS NULL',[$id,today()])['n'],'approved'=>(int)one('SELECT COUNT(*) n FROM submissions s JOIN exercises e ON e.id=s.exercise_id JOIN media m ON m.id=s.media_id WHERE s.patient_id=? AND s.status=? AND e.archived_at IS NULL AND m.archived_at IS NULL',[$id,'approved'])['n']];
 }
 function settings(): array { $out=[]; foreach(many('SELECT * FROM app_settings') as $r) $out[$r['setting_key']]=$r['setting_value']; return $out; }
 function media_allowed(array $m,array $u): bool {

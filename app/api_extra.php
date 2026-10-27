@@ -12,7 +12,7 @@ function api_extra(string $action): bool {
             $invite=one('SELECT * FROM patient_invitations WHERE code_hash=? AND email=? AND accepted_at IS NULL AND expires_at>?'.lock_suffix(),[hash('sha256',$code),$u['email'],now()]);
             if(!$invite) fail('Код не найден, истёк или выдан для другой почты',400);
             $doctor=one("SELECT * FROM users WHERE id=? AND role='doctor' AND active=1 AND verified=1",[$invite['doctor_id']]);
-            if(!$doctor) fail('Профиль приглашающего специалиста сейчас недоступен',403);
+            if(!$doctor || !account_available($doctor)) fail('Профиль приглашающего специалиста сейчас недоступен',403);
             $member=one('SELECT id FROM patient_team WHERE patient_id=? AND doctor_id=?',[$u['id'],$doctor['id']]);
             if($member) sql("UPDATE patient_team SET status='active',joined_at=? WHERE id=?",[now(),$member['id']]);
             else insert('patient_team',['patient_id'=>$u['id'],'doctor_id'=>$doctor['id'],'status'=>'active','joined_at'=>now()]);
@@ -36,7 +36,7 @@ function api_extra(string $action): bool {
         sql('UPDATE media SET is_public=? WHERE id=?',[!empty($d['is_public'])?1:0,$id]);
         audit($u,'document.visibility','media',$id);json_response(['message'=>'Видимость документа обновлена']);
     case 'testimonial.me':
-        $u=require_user(['patient']);json_response(one('SELECT * FROM testimonials WHERE patient_id=?',[$u['id']]));
+        $u=require_user(['patient']);json_response(one('SELECT * FROM testimonials WHERE patient_id=? AND is_demo=0',[$u['id']]));
     case 'testimonial.submit':
         write_guard();$u=require_user(['patient']);$d=input();if(empty($d['consent']))fail('Подтвердите согласие на публикацию отзыва');
         $name=required($d,'author_name',100);$body=required($d,'body',3000);$rating=filter_var($d['rating']??5,FILTER_VALIDATE_INT);
@@ -49,7 +49,7 @@ function api_extra(string $action): bool {
     case 'admin.testimonial.save':
         write_guard();$u=require_user(['admin']);$d=input();$id=ident($d['id']??0);$status=required($d,'status',20);
         if(!in_array($status,['approved','rejected','pending'],true))fail('Неверный статус');
-        $review=one('SELECT * FROM testimonials WHERE id=?',[$id]);if(!$review || (int)$review['is_demo']===1)fail('Отзыв не найден',404);
+        $review=one("SELECT t.id FROM testimonials t JOIN users u ON u.id=t.patient_id WHERE t.id=? AND t.is_demo=0 AND u.active=1 AND u.archived_at IS NULL AND LOWER(u.email) NOT LIKE '%@myoskills.test'",[$id]);if(!$review)fail('Отзыв не найден',404);
         sql('UPDATE testimonials SET status=?,updated_at=? WHERE id=?',[$status,now(),$id]);
         audit($u,'testimonial.moderate','testimonial',$id);json_response(['message'=>'Статус отзыва обновлён']);
     case 'admin.asset.save':

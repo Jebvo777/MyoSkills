@@ -7,3 +7,7 @@ DirectoryIndex index.php
 <FilesMatch "^(config\..*\.php|composer\..*|.*\.sql|.*\.md)$">
   Require all denied
 </FilesMatch>
+# A replacement archive must also close legacy assets left on the server.
+<Files "demo-mission.mp4">
+  Require all denied
+</Files>

@@ -5,6 +5,7 @@
 -- Never import the old SQL dump over an existing installation.
 -- Re-running this script is safe. No user, clinical or uploaded-file rows are deleted.
 -- Original sample rows are archived by exact source markers, never by numeric IDs.
+-- Also accepts the earlier release/production-20261027 migration state.
 -- DDL in MySQL commits implicitly; do not rely on ROLLBACK as a backup.
 
 -- MyoSkills upgrade for the earlier release. Select your database first.
@@ -62,7 +63,10 @@ SET @myo_sql=IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCH
 PREPARE myo_statement FROM @myo_sql;
 EXECUTE myo_statement;
 DEALLOCATE PREPARE myo_statement;
-ALTER TABLE referrals MODIFY COLUMN to_doctor INT UNSIGNED NULL;
+SET @myo_sql=IF((SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='referrals' AND COLUMN_NAME='to_doctor')='NO','ALTER TABLE referrals MODIFY COLUMN to_doctor INT UNSIGNED NULL','SELECT 1');
+PREPARE myo_statement FROM @myo_sql;
+EXECUTE myo_statement;
+DEALLOCATE PREPARE myo_statement;
 CREATE TABLE IF NOT EXISTS visit_files (
  visit_id INT UNSIGNED NOT NULL,
  media_id INT UNSIGNED NOT NULL,
@@ -93,6 +97,13 @@ CREATE TABLE IF NOT EXISTS testimonials (
  FOREIGN KEY (patient_id) REFERENCES patients(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- A prior release migration dropped this legacy archive discriminator.
+-- Restore it only when missing; the current application never enables a demo mode.
+SET @myo_sql=IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='testimonials' AND COLUMN_NAME='is_demo')=0,'ALTER TABLE testimonials ADD COLUMN is_demo TINYINT NOT NULL DEFAULT 0','SELECT 1');
+PREPARE myo_statement FROM @myo_sql;
+EXECUTE myo_statement;
+DEALLOCATE PREPARE myo_statement;
+
 -- General archival fields used by the production application.
 SET @myo_sql=IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='archived_at')=0,'ALTER TABLE users ADD COLUMN archived_at DATETIME NULL','SELECT 1');
 PREPARE myo_statement FROM @myo_sql;
@@ -107,7 +118,10 @@ PREPARE myo_statement FROM @myo_sql;
 EXECUTE myo_statement;
 DEALLOCATE PREPARE myo_statement;
 
-ALTER TABLE exercises MODIFY COLUMN active TINYINT NOT NULL DEFAULT 0;
+SET @myo_sql=IF((SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='exercises' AND COLUMN_NAME='active') <=> '0','SELECT 1','ALTER TABLE exercises MODIFY COLUMN active TINYINT NOT NULL DEFAULT 0');
+PREPARE myo_statement FROM @myo_sql;
+EXECUTE myo_statement;
+DEALLOCATE PREPARE myo_statement;
 
 DROP TEMPORARY TABLE IF EXISTS myo_release_20261027_users;
 CREATE TEMPORARY TABLE myo_release_20261027_users (id INT UNSIGNED PRIMARY KEY) ENGINE=InnoDB;
@@ -124,8 +138,9 @@ WHERE LOWER(email) IN (
  'denis@myoskills.test','alex@myoskills.test','alisa@myoskills.test','max@myoskills.test'
 ) AND created_at='2026-10-01 10:00:00';
 
--- Archive only the complete, unchanged source signature without an uploaded video.
+-- Archive only the complete source signature without an uploaded video.
 -- An edit to steps, duration, level, repetitions, category or author preserves a draft.
+-- The second signature is the empty retired form produced by the earlier release.
 INSERT INTO myo_release_20261027_exercises (id)
 SELECT e.id FROM exercises e
 JOIN planets p ON p.id=e.planet_id
@@ -133,20 +148,21 @@ JOIN myo_release_20261027_users source_author ON source_author.id=e.created_by
 WHERE e.created_at='2026-10-01 10:00:00'
   AND e.video_media_id IS NULL
   AND e.video_path IN ('assets/demo-mission.mp4','')
-  AND e.description='Демонстрационный материал для проверки интерфейса. Содержание и видеообразец заменяет лечащий специалист.'
-  AND e.steps_json='["Посмотри образец, который подготовил врач.", "Выполни только назначенные врачом действия и количество повторений.", "Загрузи короткое видео выполнения и дождись комментария."]'
+  AND ((BINARY e.description=BINARY 'Демонстрационный материал для проверки интерфейса. Содержание и видеообразец заменяет лечащий специалист.'
+        AND BINARY e.steps_json=BINARY '["Посмотри образец, который подготовил врач.", "Выполни только назначенные врачом действия и количество повторений.", "Загрузи короткое видео выполнения и дождись комментария."]')
+    OR (BINARY e.description=BINARY '' AND BINARY e.steps_json=BINARY '[]' AND e.active=0 AND e.video_path=''))
   AND e.level IN (1,2)
   AND e.duration_seconds=CASE WHEN e.level=1 THEN 60 ELSE 90 END
-  AND e.repetitions='По назначению врача'
-  AND ((p.slug='posture' AND e.title=CONCAT('Осанка: миссия ',e.level))
-    OR (p.slug='breathing' AND e.title=CONCAT('Дыхание: миссия ',e.level))
-    OR (p.slug='tongue' AND e.title=CONCAT('Язык: миссия ',e.level))
-    OR (p.slug='swallowing' AND e.title=CONCAT('Глотание: миссия ',e.level))
-    OR (p.slug='chewing' AND e.title=CONCAT('Жевание: миссия ',e.level))
-    OR (p.slug='lips' AND e.title=CONCAT('Губы и щёки: миссия ',e.level)));
+  AND BINARY e.repetitions=BINARY 'По назначению врача'
+  AND ((p.slug='posture' AND BINARY e.title=BINARY CONCAT('Осанка: миссия ',e.level))
+    OR (p.slug='breathing' AND BINARY e.title=BINARY CONCAT('Дыхание: миссия ',e.level))
+    OR (p.slug='tongue' AND BINARY e.title=BINARY CONCAT('Язык: миссия ',e.level))
+    OR (p.slug='swallowing' AND BINARY e.title=BINARY CONCAT('Глотание: миссия ',e.level))
+    OR (p.slug='chewing' AND BINARY e.title=BINARY CONCAT('Жевание: миссия ',e.level))
+    OR (p.slug='lips' AND BINARY e.title=BINARY CONCAT('Губы и щёки: миссия ',e.level)));
 
 UPDATE users u JOIN myo_release_20261027_users r ON r.id=u.id
-SET u.active=0,u.verified=0,u.contact_public=0,u.archived_at=COALESCE(u.archived_at,NOW());
+SET u.active=0,u.verified=0,u.contact_public=0,u.password_hash='!retired-account',u.archived_at=COALESCE(u.archived_at,NOW());
 
 UPDATE patients p JOIN myo_release_20261027_users r ON r.id=p.user_id
 SET p.status='archived';
@@ -186,6 +202,8 @@ WHERE t.is_demo=1 AND u.archived_at IS NULL
    'denis@myoskills.test','alex@myoskills.test','alisa@myoskills.test','max@myoskills.test'
   );
 UPDATE testimonials SET status='rejected' WHERE is_demo=1;
+UPDATE testimonials t JOIN myo_release_20261027_users r ON r.id=t.patient_id
+SET t.is_demo=1,t.status='rejected';
 
 -- Replace only the exact old prelaunch wording. Owner-edited copy is preserved.
 UPDATE app_settings
@@ -234,5 +252,6 @@ COMMIT;
 SELECT '2026.10.27-production' AS release_version,
  (SELECT COUNT(*) FROM users WHERE active=1 AND archived_at IS NULL AND role='admin' AND LOWER(email) NOT LIKE '%@myoskills.test') AS active_administrators,
  (SELECT COUNT(*) FROM users WHERE archived_at IS NOT NULL) AS archived_accounts,
- (SELECT COUNT(*) FROM exercises WHERE archived_at IS NOT NULL) AS archived_exercises;
+ (SELECT COUNT(*) FROM exercises WHERE archived_at IS NOT NULL) AS archived_exercises,
+ (SELECT COUNT(*) FROM media WHERE archived_at IS NOT NULL) AS archived_media;
 -- If active_administrators=0, create your administrator before reopening the site.

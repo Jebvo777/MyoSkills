@@ -5,7 +5,7 @@ try {
     $u=require_user();$pid=patient_id($u);patient_access($pid,$u);
     $period=($_GET['period']??'week')==='month'?'month':'week';
     $since=date('Y-m-d',strtotime($period==='week'?'-6 days':'-29 days'));
-    $rows=many('SELECT pr.practice_day,e.title,p.title planet_title,(SELECT s.status FROM submissions s WHERE s.assignment_id=pr.assignment_id AND DATE(s.created_at)=pr.practice_day ORDER BY s.id DESC LIMIT 1) review_status FROM practices pr JOIN exercises e ON e.id=pr.exercise_id JOIN planets p ON p.id=e.planet_id WHERE pr.patient_id=? AND pr.practice_day>=? ORDER BY pr.practice_day DESC',[$pid,$since]);
+    $rows=many('SELECT pr.practice_day,e.title,p.title planet_title,(SELECT s.status FROM submissions s JOIN media m ON m.id=s.media_id WHERE s.assignment_id=pr.assignment_id AND m.archived_at IS NULL AND DATE(s.created_at)=pr.practice_day ORDER BY s.id DESC LIMIT 1) review_status FROM practices pr JOIN exercises e ON e.id=pr.exercise_id JOIN planets p ON p.id=e.planet_id WHERE pr.patient_id=? AND pr.practice_day>=? AND e.archived_at IS NULL ORDER BY pr.practice_day DESC',[$pid,$since]);
     header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="myoskills-report-'.today().'.csv"');header('Cache-Control: no-store');
     $f=fopen('php://output','wb');fwrite($f,"\xEF\xBB\xBF");fputcsv($f,['Дата','Упражнение','Группа','Проверка'],';');
     foreach($rows as $r){$safe=array_map(fn($s)=>preg_match('/^[=+@-]/u',(string)$s)?"'".$s:(string)$s,$r);fputcsv($f,$safe,';');}fclose($f);
