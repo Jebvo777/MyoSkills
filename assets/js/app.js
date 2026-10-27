@@ -83,7 +83,6 @@ document.addEventListener('click',async e=>{
   case 'sidebar-toggle':{const open=$('.sidebar')?.classList.toggle('open');$('[data-action="sidebar-toggle"]', $('.app-topbar'))?.setAttribute('aria-expanded',String(Boolean(open)));break;}
   case 'mobile-menu':modal('Главная',`<nav class="mobile-menu-list">${['home','specialists','about','contacts','tools','pricing'].map((p,i)=>navLink(['Главная','Специалисты','О сервисе','Контакты','Инструменты','Тарифы'][i],p,'arrow','icon-text')).join('')}</nav>`);break;
   case 'logout':await busy(el,async()=>{await api('auth.logout',{});state.user=null;state.dashboard=null;go('home');});break;
-  case 'demo-login':await busy(el,async()=>{const r=await api('auth.login',{email:d.email,password:'MyoDemo!2026'});state.user=r.user;go(homeForRole());});break;
   case 'planet-select':selectPlanet(Number(d.id));break;
   case 'doctor-contact':showDoctor(Number(d.id));break;
   case 'request-doctor':await busy(el,async()=>{await api('team.request',{doctor_id:Number(d.id)});closeModal();toast('Запрос отправлен');});break;
@@ -124,7 +123,11 @@ document.addEventListener('click',async e=>{
   case 'admin-asset':showAdminAsset(Number(d.id));break;
   case 'profile-location':profileLocation(el);break;
   case 'voice-guide':await busy(el,async()=>{const enabled=!state.user.preferences?.voice_instructions;await api('account.voice',{enabled});state.user.preferences={...state.user.preferences,voice_instructions:enabled};el.setAttribute('aria-pressed',String(enabled));toast(enabled?'Голосовой спутник включён':'Голосовой спутник отключён');});break;
-  case 'preview-exercise':{const ex=state.patientRecord.exercises.find(x=>Number(x.id)===Number(d.id));if(ex)modal('Видеообразец',`<video controls playsinline src="${asset(ex.video_media_id?'media.php?id='+ex.video_media_id:ex.video_path)}"></video>`,true);break;}
+  case 'preview-exercise':{
+   const ex=state.patientRecord.exercises.find(x=>Number(x.id)===Number(d.id));if(!ex)break;
+   const path=String(ex.video_path||'').trim(),source=Number(ex.video_media_id)>0?asset('media.php?id='+ex.video_media_id):path&&path!=='assets/demo-mission.mp4'?asset(path):'';
+   modal('Видеообразец',source?`<video controls playsinline preload="metadata" src="${esc(source)}"></video>`:`<div class="video-unavailable">${icon('video')}<h3>${t('Видеообразец пока не добавлен')}</h3><p>${t('Обратитесь к администратору сервиса, чтобы добавить видеообразец.')}</p></div>`,true);break;
+  }
   case 'admin-user':showAdminUser(Number(d.id));break;
   case 'admin-exercise':showAdminExercise(Number(d.id||0));break;
   case 'admin-planet':showAdminPlanet(Number(d.id));break;
@@ -138,6 +141,7 @@ document.addEventListener('submit',async e=>{
   switch(form.id){
   case 'auth-form':{
    const page=form.dataset.type;const action=page==='register'?'auth.register':page==='forgot'?'auth.forgot':page==='reset'?'auth.reset':'auth.login';
+   if(page==='forgot'&&state.public?.password_reset_available!==true){const message=t('Восстановление пароля по почте сейчас недоступно. Свяжитесь с администратором сервиса.');$('.form-error',form).textContent=message;throw new Error(message);}
    if(page==='reset')data.token=state.route.token;
    if(page==='register')data.language=lang();
    let r;try{r=await api(action,data);}catch(err){$('.form-error',form).textContent=t(err.message);throw err;}
@@ -168,7 +172,12 @@ document.addEventListener('submit',async e=>{
    closeModal();if(form.dataset.category==='site')state.public=await api('public');toast('Документ загружен');render(state.route);break;
   }
   case 'admin-user-form':await api('admin.user.save',{...data,id:Number(form.dataset.id)});closeModal();toast('Данные сохранены');render(state.route);break;
-  case 'admin-exercise-form':await api('admin.exercise.save',{...data,...(form.dataset.id?{id:Number(form.dataset.id)}:{}),steps:String(data.steps||'').split('\n').filter(Boolean)});closeModal();toast('Данные сохранены');render(state.route);break;
+  case 'admin-exercise-form':{
+   const current=state.admin.exercises.find(ex=>Number(ex.id)===Number(form.dataset.id));
+   const path=String(current?.video_path||'').trim(),hasVideo=Number(data.video_media_id)>0||(path&&path!=='assets/demo-mission.mp4');
+   if(data.active&&!hasVideo)throw new Error(t('Загрузите видеообразец для публикации'));
+   await api('admin.exercise.save',{...data,...(form.dataset.id?{id:Number(form.dataset.id)}:{}),steps:String(data.steps||'').split('\n').filter(Boolean)});closeModal();toast('Данные сохранены');render(state.route);break;
+  }
   case 'admin-planet-form':await api('admin.planet.save',{...data,id:Number(form.dataset.id)});closeModal();state.public=await api('public');toast('Данные сохранены');render(state.route);break;
   case 'admin-page-form':await api('admin.page.save',{...data,...(form.dataset.id?{id:Number(form.dataset.id)}:{})});closeModal();state.public=await api('public');toast('Данные сохранены');render(state.route);break;
   case 'admin-content-form':{
@@ -192,8 +201,8 @@ document.addEventListener('change',async e=>{
   try{for(const file of el.files){if((state.visitUploads||[]).length>=10)throw new Error(t('Не более 10 файлов приёма'));const media=await upload(file,'document',{patient_id:state.patientRecord.patient.user_id});state.visitUploads.push(media.id);const row=document.createElement('span');row.textContent=file.name;$('#visit-file-list').append(row);}}catch(err){toast(err.message,'error');}finally{if(submit.isConnected)submit.disabled=false;}
  }
  if(el.id==='exercise-video-upload'&&el.files[0]){
-  const target=$('#exercise-video-state');target.textContent=t('Загрузка');
-  try{const m=await upload(el.files[0],'exercise',{},p=>target.textContent=`${t('Загрузка')} ${p}%`);$('#exercise-media-id').value=m.id;target.textContent=el.files[0].name;toast('Видеообразец загружен');}catch(err){target.textContent=err.message;toast(err.message,'error');}
+  const form=el.closest('form'),file=el.files[0],target=$('#exercise-video-state',form),submit=$('[type=submit]',form);target.textContent=t('Загрузка');el.disabled=true;if(submit)submit.disabled=true;
+  try{const m=await upload(file,'exercise',{},p=>{if(target.isConnected)target.textContent=`${t('Загрузка')} ${p}%`;});if(form.isConnected){$('#exercise-media-id',form).value=m.id;target.textContent=file.name;toast('Видеообразец загружен');}}catch(err){if(target.isConnected)target.textContent=err.message;toast(err.message,'error');}finally{if(el.isConnected)el.disabled=false;if(submit?.isConnected)submit.disabled=false;}
  }
 });
 document.addEventListener('input',e=>{
@@ -280,7 +289,7 @@ function showFileUpload(category,pid=0,visitId=0){const accept=category==='photo
 function showAdminUser(id){const u=state.admin.users.find(u=>Number(u.id)===id);if(!u)return;modal('Контроль доступа',`<form id="admin-user-form" data-id="${id}" class="form-stack"><div><h3>${esc(u.name)}</h3><p class="subtle small">${esc(u.email)}</p></div>${check('Активен','active',Number(u.active))}${u.role==='doctor'?check('Верифицирован','verified',Number(u.verified)):''}<button class="btn btn-purple" type="submit">${t('Сохранить')}${icon('check')}</button></form>`);}
 function showAdminExercise(id){
  const e=state.admin.exercises.find(e=>Number(e.id)===id)||{};let steps=[];try{steps=JSON.parse(e.steps_json||'[]');}catch{}
- modal('Библиотека упражнений',`<form id="admin-exercise-form" ${id?`data-id="${id}"`:''} class="form-stack">${field('Название','title',e.title||'','text','required maxlength="160"')}${select('Планета','planet_id',state.admin.planets.map(p=>[p.id,p.title]),e.planet_id||1)}${textarea('Описание','description',e.description||'','maxlength="7000"')}${textarea('Шаги через новую строку','steps',steps.join('\n'))}<div class="form-grid">${field('Уровень','level',e.level||1,'number','min="1" max="10" required')}${field('Длительность в секундах','duration_seconds',e.duration_seconds||60,'number','min="10" max="3600" required')}</div>${field('Повторения','repetitions',e.repetitions||'')}${check('Активное упражнение','active',id?Number(e.active):true)}<label class="field"><span>${t('Загрузить видеообразец')}</span><input id="exercise-video-upload" type="file" accept="video/mp4,video/webm,video/quicktime"></label><input type="hidden" name="video_media_id" id="exercise-media-id" value="${e.video_media_id||''}"><p id="exercise-video-state" class="small subtle">${e.video_media_id?`#${e.video_media_id}`:t('Демонстрационный материал')}</p><button class="btn btn-purple" type="submit">${t('Сохранить')}${icon('check')}</button></form>`,true);
+ modal('Библиотека упражнений',`<form id="admin-exercise-form" ${id?`data-id="${id}"`:''} class="form-stack">${field('Название','title',e.title||'','text','required maxlength="160"')}${select('Планета','planet_id',state.admin.planets.map(p=>[p.id,p.title]),e.planet_id||1)}${textarea('Описание','description',e.description||'','maxlength="7000"')}${textarea('Шаги через новую строку','steps',steps.join('\n'))}<div class="form-grid">${field('Уровень','level',e.level||1,'number','min="1" max="10" required')}${field('Длительность в секундах','duration_seconds',e.duration_seconds||60,'number','min="10" max="3600" required')}</div>${field('Повторения','repetitions',e.repetitions||'')}${check('Активное упражнение','active',id?Number(e.active):false)}<label class="field"><span>${t('Загрузить видеообразец')}</span><input id="exercise-video-upload" type="file" accept="video/mp4,video/webm,video/quicktime"></label><input type="hidden" name="video_media_id" id="exercise-media-id" value="${e.video_media_id||''}"><p id="exercise-video-state" class="small subtle">${Number(e.video_media_id)>0||String(e.video_path||'').trim()&&e.video_path!=='assets/demo-mission.mp4'?t('Видеообразец подключён'):t('Загрузите видеообразец для публикации')}</p><button class="btn btn-purple" type="submit">${t('Сохранить')}${icon('check')}</button></form>`,true);
 }
 function showAdminPlanet(id){const p=state.admin.planets.find(p=>Number(p.id)===id);if(!p)return;modal('Планеты',`<form id="admin-planet-form" data-id="${id}" class="form-stack">${field('Название','title',p.title,'text','required maxlength="100"')}${field('Подзаголовок','subtitle',p.subtitle)}${textarea('Описание','description',p.description)}<div class="form-grid">${field('Палитра','color',p.color,'color','required')}${field('Порядок','sort_order',p.sort_order,'number')}</div>${select('Изображение планеты','image_media_id',[['','Стандартная планета'],...(state.admin.assets||[]).filter(m=>Number(m.is_public)&&m.mime_type.startsWith('image/')).map(m=>[m.id,m.original_name])],p.image?.startsWith('asset.php?id=')?p.image.split('=')[1]:'')}<button class="btn btn-purple" type="submit">${t('Сохранить')}${icon('check')}</button></form>`);}
 function showAdminPage(id){const p=state.admin.pages?.find(p=>Number(p.id)===id)||{};modal('Страницы и меню',`<form id="admin-page-form" ${id?`data-id="${id}"`:''} class="form-stack">${field('Название','title',p.title||'','text','required maxlength="160"')}${field('Адрес страницы','slug',p.slug||'','text','required pattern="[a-z0-9][a-z0-9-]{1,79}" maxlength="80"')}${field('Название в меню','menu_label',p.menu_label||'','text','maxlength="80"')}${textarea('Содержание','body',p.body||'','required maxlength="30000"')}${field('Заголовок на английском','title_en',p.title_en||'','text','maxlength="160"')}${field('Меню на английском','menu_label_en',p.menu_label_en||'','text','maxlength="80"')}${textarea('Содержание на английском','body_en',p.body_en||'','maxlength="30000"')}${select('Обложка','cover_media_id',[['','Без обложки'],...(state.admin.assets||[]).filter(m=>Number(m.is_public)&&m.mime_type.startsWith('image/')).map(m=>[m.id,m.original_name])],p.cover_media_id||'')}${field('Порядок','sort_order',p.sort_order||0,'number')}${check('Активен','active',id?Number(p.active):true)}<button type="submit" class="btn btn-purple">${t('Сохранить')}${icon('check')}</button></form>`,true);}

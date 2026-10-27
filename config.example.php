@@ -16,5 +16,4 @@ return [
     'uploads' => ['video_mb' => 80, 'image_mb' => 12, 'document_mb' => 15],
     'mail' => ['enabled' => false, 'from' => 'noreply@system404-sites.ru'],
     'contact_email' => '',
-    'demo_labels' => true,
 ];

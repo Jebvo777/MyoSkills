@@ -3,7 +3,7 @@ declare(strict_types=1);
 require __DIR__.'/app/bootstrap.php';
 try {
     $id=ident($_GET['id']??0);
-    $m=one("SELECT m.* FROM media m JOIN users u ON u.id=m.owner_id WHERE m.id=? AND m.is_public=1 AND (m.category='site' OR (m.category='diploma' AND u.role='doctor' AND u.active=1 AND u.verified=1))",[$id]);
+    $m=one("SELECT m.* FROM media m JOIN users u ON u.id=m.owner_id WHERE m.id=? AND m.is_public=1 AND m.archived_at IS NULL AND u.archived_at IS NULL AND (m.category='site' OR (m.category='diploma' AND u.role='doctor' AND u.active=1 AND u.verified=1))",[$id]);
     if(!$m || !in_array($m['mime_type'],['image/jpeg','image/png','image/webp','application/pdf'],true))fail('Материал недоступен',404);
     $path=MYO_ROOT.'/storage/files/'.basename($m['stored_name']);if(!is_file($path))fail('Материал не найден',404);
     session_write_close();header('Content-Type: '.$m['mime_type']);header('Cache-Control: no-cache');

@@ -5,13 +5,13 @@ function mission_rows(int $id): array {
     (SELECT COUNT(*) FROM practices pr WHERE pr.assignment_id=a.id AND pr.practice_day=?) done_today,
     (SELECT s.status FROM submissions s WHERE s.assignment_id=a.id ORDER BY s.id DESC LIMIT 1) last_status,
     (SELECT COUNT(*) FROM submissions s WHERE s.assignment_id=a.id AND s.status='approved') approvals
-    FROM assignments a JOIN exercises e ON e.id=a.exercise_id JOIN planets p ON p.id=e.planet_id WHERE a.patient_id=? AND e.active=1 ORDER BY p.sort_order,e.level,a.id",[today(),$id]);
+    FROM assignments a JOIN exercises e ON e.id=a.exercise_id JOIN planets p ON p.id=e.planet_id WHERE a.patient_id=? AND e.active=1 AND e.archived_at IS NULL ORDER BY p.sort_order,e.level,a.id",[today(),$id]);
 }
 function api_patient(string $action): bool {
     switch($action) {
     case 'dashboard':
         $u=require_user(); $id=patient_id($u); $patient=patient_access($id,$u);
-        $team=array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active' AND u.active=1",[$id]));
+        $team=array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active' AND u.active=1 AND u.archived_at IS NULL",[$id]));
         json_response(['patient'=>$patient,'stats'=>stats($id),'missions'=>mission_rows($id),'planets'=>many('SELECT * FROM planets ORDER BY sort_order'),'team'=>$team,'notifications'=>many('SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 6',[$u['id']])]);
     case 'mission':
         $u=require_user(); $id=patient_id($u); patient_access($id,$u);
@@ -24,7 +24,7 @@ function api_patient(string $action): bool {
     case 'practice.complete':
         write_guard(); $u=require_user(['patient']); $d=input(); $aid=ident($d['assignment_id']??0);
         $result=transaction(function() use($u,$aid){
-            $a=one("SELECT a.* FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.id=? AND a.patient_id=? AND a.status='active' AND e.active=1".lock_suffix(),[$aid,$u['id']]);
+            $a=one("SELECT a.* FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.id=? AND a.patient_id=? AND a.status='active' AND e.active=1 AND e.archived_at IS NULL".lock_suffix(),[$aid,$u['id']]);
             if(!$a) fail('Упражнение недоступно',403);
             if(!one('SELECT id FROM practices WHERE assignment_id=? AND practice_day=?',[$aid,today()])) insert('practices',['assignment_id'=>$aid,'patient_id'=>$u['id'],'exercise_id'=>$a['exercise_id'],'practice_day'=>today(),'created_at'=>now()]);
             $awarded=reward((int)$u['id'],$aid,today(),'fuel',10);
@@ -33,9 +33,9 @@ function api_patient(string $action): bool {
     case 'submission.create':
         write_guard(); $u=require_user(['patient']); $d=input(); $aid=ident($d['assignment_id']??0); $mid=ident($d['media_id']??0);
         $sid=transaction(function() use($u,$d,$aid,$mid){
-            $a=one("SELECT a.* FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.id=? AND a.patient_id=? AND a.status='active' AND e.active=1".lock_suffix(),[$aid,$u['id']]);
+            $a=one("SELECT a.* FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.id=? AND a.patient_id=? AND a.status='active' AND e.active=1 AND e.archived_at IS NULL".lock_suffix(),[$aid,$u['id']]);
             if(!$a) fail('Упражнение недоступно',403);
-            $m=one("SELECT * FROM media WHERE id=? AND owner_id=? AND patient_id=? AND category='video'",[$mid,$u['id'],$u['id']]);
+            $m=one("SELECT * FROM media WHERE id=? AND owner_id=? AND patient_id=? AND category='video' AND archived_at IS NULL",[$mid,$u['id'],$u['id']]);
             if(!$m) fail('Видеофайл не найден',404);
             if(one('SELECT id FROM submissions WHERE media_id=?',[$mid])) fail('Это видео уже отправлено');
             if((int)one('SELECT COUNT(*) n FROM submissions WHERE assignment_id=? AND status=?',[$aid,'pending'])['n']>=3) fail('Дождитесь проверки ранее отправленных видео');
@@ -54,7 +54,7 @@ function api_patient(string $action): bool {
         json_response(['practices'=>$rows,'submissions'=>$reviews,'stats'=>stats($id),'since'=>$since,'period'=>$period]);
     case 'progress':
         $u=require_user(); $id=patient_id($u); $p=patient_access($id,$u);
-        $photos=many("SELECT m.id,m.original_name,m.capture_date,m.note,m.created_at,u.name author FROM media m JOIN users u ON u.id=m.owner_id WHERE m.patient_id=? AND m.category='photo' ORDER BY COALESCE(m.capture_date,m.created_at) DESC,m.id DESC",[$id]);
+        $photos=many("SELECT m.id,m.original_name,m.capture_date,m.note,m.created_at,u.name author FROM media m JOIN users u ON u.id=m.owner_id WHERE m.patient_id=? AND m.category='photo' AND m.archived_at IS NULL ORDER BY COALESCE(m.capture_date,m.created_at) DESC,m.id DESC",[$id]);
         json_response(['patient'=>$p,'photos'=>$photos,'stats'=>stats($id),'missions'=>mission_rows($id)]);
     case 'report.send':
         write_guard(); $u=require_user(['patient']); $d=input();
@@ -65,7 +65,7 @@ function api_patient(string $action): bool {
         json_response(['message'=>'Отчёт доступен вашей команде врачей','period'=>$period,'count'=>$count]);
     case 'team':
         $u=require_user(); $id=patient_id($u); patient_access($id,$u);
-        json_response(array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active' AND u.active=1",[$id])));
+        json_response(array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active' AND u.active=1 AND u.archived_at IS NULL",[$id])));
     case 'team.request':
         write_guard(); $u=require_user(['patient']); $d=input(); $did=ident($d['doctor_id']??0);
         $doctor=one("SELECT * FROM users WHERE id=? AND role='doctor' AND verified=1 AND active=1",[$did]); if(!$doctor) fail('Специалист не найден',404);

@@ -1,5 +1,5 @@
 -- MyoSkills / MySQL 5.7+ or MariaDB 10.4+ / utf8mb4
--- Import into the existing system404_mio database selected in phpMyAdmin.
+-- Empty installation schema. For a complete new database use install.sql.
 -- The hosting control panel owns database/user creation; this script creates tables.
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
  longitude DECIMAL(10,7) NULL,
  preferences_json TEXT NULL,
  consent_at DATETIME NULL,
+ archived_at DATETIME NULL,
  created_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS patients (
@@ -71,7 +72,8 @@ CREATE TABLE IF NOT EXISTS exercises (
  repetitions VARCHAR(60) NOT NULL DEFAULT '',
  video_media_id INT UNSIGNED NULL,
  video_path VARCHAR(190) NOT NULL DEFAULT '',
- active TINYINT NOT NULL DEFAULT 1,
+ active TINYINT NOT NULL DEFAULT 0,
+ archived_at DATETIME NULL,
  created_by INT UNSIGNED NULL,
  created_at DATETIME NOT NULL,
  FOREIGN KEY (planet_id) REFERENCES planets(id)
@@ -102,6 +104,7 @@ CREATE TABLE IF NOT EXISTS media (
  capture_date DATE NULL,
  note VARCHAR(255) NOT NULL DEFAULT '',
  is_public TINYINT NOT NULL DEFAULT 0,
+ archived_at DATETIME NULL,
  created_at DATETIME NOT NULL,
  FOREIGN KEY (owner_id) REFERENCES users(id),
  FOREIGN KEY (patient_id) REFERENCES patients(user_id) ON DELETE CASCADE

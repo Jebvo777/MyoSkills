@@ -4,9 +4,9 @@ function api_doctor(string $action): bool {
     switch($action) {
     case 'doctor.dashboard':
         $u=require_user(['doctor']);
-        $documents=many("SELECT id,original_name,created_at,mime_type,is_public FROM media WHERE owner_id=? AND category='diploma' ORDER BY id DESC",[$u['id']]);
+        $documents=many("SELECT id,original_name,created_at,mime_type,is_public FROM media WHERE owner_id=? AND category='diploma' AND archived_at IS NULL ORDER BY id DESC",[$u['id']]);
         if(!$u['verified']) json_response(['verified'=>false,'patients'=>[],'documents'=>$documents,'reviews'=>[],'referrals'=>[],'requests'=>[]]);
-        $patients=many("SELECT p.*,u.name,u.city,(SELECT COUNT(*) FROM practices pr WHERE pr.patient_id=p.user_id AND pr.practice_day=?) today_count,(SELECT COUNT(*) FROM submissions s WHERE s.patient_id=p.user_id AND s.status='pending') pending,(SELECT MAX(visited_at) FROM visits v WHERE v.patient_id=p.user_id) last_visit FROM patient_team t JOIN patients p ON p.user_id=t.patient_id JOIN users u ON u.id=p.user_id WHERE t.doctor_id=? AND t.status='active' AND u.active=1 ORDER BY u.name",[today(),$u['id']]);
+        $patients=many("SELECT p.*,u.name,u.city,(SELECT COUNT(*) FROM practices pr WHERE pr.patient_id=p.user_id AND pr.practice_day=?) today_count,(SELECT COUNT(*) FROM submissions s WHERE s.patient_id=p.user_id AND s.status='pending') pending,(SELECT MAX(visited_at) FROM visits v WHERE v.patient_id=p.user_id) last_visit FROM patient_team t JOIN patients p ON p.user_id=t.patient_id JOIN users u ON u.id=p.user_id WHERE t.doctor_id=? AND t.status='active' AND u.active=1 AND u.archived_at IS NULL ORDER BY u.name",[today(),$u['id']]);
         foreach($patients as &$p) $p['stats']=stats((int)$p['user_id']); unset($p);
         $reviews=many("SELECT s.*,e.title,u.name patient_name,p.color,p.title planet_title FROM submissions s JOIN exercises e ON e.id=s.exercise_id JOIN planets p ON p.id=e.planet_id JOIN users u ON u.id=s.patient_id JOIN patient_team t ON t.patient_id=s.patient_id WHERE t.doctor_id=? AND t.status='active' AND s.status='pending' ORDER BY s.id",[$u['id']]);
         $referrals=many('SELECT r.*,u.name patient_name,f.name from_name,COALESCE(t.name,r.external_name) to_name FROM referrals r JOIN users u ON u.id=r.patient_id JOIN users f ON f.id=r.from_doctor LEFT JOIN users t ON t.id=r.to_doctor WHERE r.from_doctor=? OR r.to_doctor=? ORDER BY r.id DESC',[$u['id'],$u['id']]);
@@ -16,13 +16,14 @@ function api_doctor(string $action): bool {
         $u=require_user(['doctor','admin']); if($u['role']==='doctor') assert_doctor($u);
         $id=ident($_GET['id']??0); $p=patient_access($id,$u,true);
         $visits=many('SELECT v.*,u.name doctor_name,u.specialty FROM visits v JOIN users u ON u.id=v.doctor_id WHERE v.patient_id=? ORDER BY v.visited_at DESC',[$id]);
-        foreach($visits as &$visit)$visit['files']=many('SELECT m.id,m.original_name,m.mime_type FROM visit_files vf JOIN media m ON m.id=vf.media_id WHERE vf.visit_id=?',[$visit['id']]);unset($visit);
+        foreach($visits as &$visit)$visit['files']=many('SELECT m.id,m.original_name,m.mime_type FROM visit_files vf JOIN media m ON m.id=vf.media_id WHERE vf.visit_id=? AND m.archived_at IS NULL',[$visit['id']]);unset($visit);
         $referrals=many('SELECT r.*,f.name from_name,COALESCE(t.name,r.external_name) to_name FROM referrals r JOIN users f ON f.id=r.from_doctor LEFT JOIN users t ON t.id=r.to_doctor WHERE r.patient_id=? ORDER BY r.id DESC',[$id]);
-        json_response(['patient'=>$p,'stats'=>stats($id),'missions'=>mission_rows($id),'exercises'=>many('SELECT e.*,p.title planet_title,p.color FROM exercises e JOIN planets p ON p.id=e.planet_id WHERE e.active=1 ORDER BY p.sort_order,e.level'),'team'=>array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active'",[$id])),'visits'=>$visits,'referrals'=>$referrals,'photos'=>many("SELECT m.id,m.original_name,m.capture_date,m.note,u.name author FROM media m JOIN users u ON u.id=m.owner_id WHERE m.patient_id=? AND m.category='photo' ORDER BY COALESCE(m.capture_date,m.created_at) DESC",[$id]),'documents'=>many("SELECT id,original_name,capture_date,note,created_at FROM media WHERE patient_id=? AND category='document' ORDER BY id DESC",[$id]),'submissions'=>many('SELECT s.*,e.title,u.name reviewer FROM submissions s JOIN exercises e ON e.id=s.exercise_id LEFT JOIN users u ON u.id=s.reviewed_by WHERE s.patient_id=? ORDER BY s.id DESC LIMIT 60',[$id]),'may_assign'=>may_assign($u),'may_photo'=>$u['role']==='admin'||in_array($u['specialty'],['myotherapist','orthodontist'],true)]);
+        json_response(['patient'=>$p,'stats'=>stats($id),'missions'=>mission_rows($id),'exercises'=>many('SELECT e.*,p.title planet_title,p.color FROM exercises e JOIN planets p ON p.id=e.planet_id WHERE e.active=1 AND e.archived_at IS NULL ORDER BY p.sort_order,e.level'),'team'=>array_map(fn($r)=>public_user($r),many("SELECT u.* FROM patient_team t JOIN users u ON u.id=t.doctor_id WHERE t.patient_id=? AND t.status='active' AND u.active=1 AND u.archived_at IS NULL",[$id])),'visits'=>$visits,'referrals'=>$referrals,'photos'=>many("SELECT m.id,m.original_name,m.capture_date,m.note,u.name author FROM media m JOIN users u ON u.id=m.owner_id WHERE m.patient_id=? AND m.category='photo' AND m.archived_at IS NULL ORDER BY COALESCE(m.capture_date,m.created_at) DESC",[$id]),'documents'=>many("SELECT id,original_name,capture_date,note,created_at FROM media WHERE patient_id=? AND category='document' AND archived_at IS NULL ORDER BY id DESC",[$id]),'submissions'=>many('SELECT s.*,e.title,u.name reviewer FROM submissions s JOIN exercises e ON e.id=s.exercise_id LEFT JOIN users u ON u.id=s.reviewed_by WHERE s.patient_id=? ORDER BY s.id DESC LIMIT 60',[$id]),'may_assign'=>may_assign($u),'may_photo'=>$u['role']==='admin'||in_array($u['specialty'],['myotherapist','orthodontist'],true)]);
     case 'doctor.patient.add':
         write_guard(); $u=require_user(['doctor']); assert_doctor($u); $d=input();
-        $name=required($d,'name',160); $email=mb_strtolower(required($d,'email',190)); if(!filter_var($email,FILTER_VALIDATE_EMAIL)) fail('Укажите корректную почту');
+        $name=required($d,'name',160); $email=mb_strtolower(required($d,'email',190)); if(!filter_var($email,FILTER_VALIDATE_EMAIL) || reserved_account_email($email)) fail('Укажите действующую почту');
         $existing=one('SELECT * FROM users WHERE email=?',[$email]); $temporary=null;
+        if($existing && (!account_available($existing) || !$existing['active'])) fail('Нельзя подключить этот аккаунт');
         if($existing && value($d,'access_code',40)==='') {
             if($existing['role']!=='patient'||!$existing['active'])fail('Нельзя подключить этот аккаунт');
             if(!one("SELECT id FROM patient_team WHERE patient_id=? AND doctor_id=? AND status='active'",[$existing['id'],$u['id']])) {
@@ -63,7 +64,7 @@ function api_doctor(string $action): bool {
     case 'assignment.save':
         write_guard(); $u=require_user(['doctor']); if(!may_assign($u)) fail('Упражнения назначает верифицированный миотерапевт',403);
         $d=input(); $pid=ident($d['patient_id']??0); patient_access($pid,$u,true); $eid=ident($d['exercise_id']??0);
-        if(!one('SELECT id FROM exercises WHERE id=? AND active=1',[$eid])) fail('Упражнение не найдено');
+        if(!one('SELECT id FROM exercises WHERE id=? AND active=1 AND archived_at IS NULL',[$eid])) fail('Упражнение не найдено');
         $status=value($d,'status',20,'active'); if(!in_array($status,['active','paused','completed'],true)) fail('Неверный статус');
         $instructions=value($d,'instructions',3000); $days=max(1,min(7,(int)($d['days_per_week']??7)));
         $aid=transaction(function() use($pid,$eid,$u,$status,$instructions,$days){
@@ -98,7 +99,7 @@ function api_doctor(string $action): bool {
             $plan=$extended?value($d,'treatment_plan',5000):'';
             $media=$d['media_ids']??[];if(!is_array($media)||count($media)>10)fail('Не более 10 файлов приёма');
             $media=array_values(array_unique(array_map('ident',$media)));
-            foreach($media as $mid)if(!one("SELECT id FROM media WHERE id=? AND patient_id=? AND owner_id=? AND category IN ('document','photo')",[$mid,$pid,$u['id']]))fail('Файл не относится к этому приёму',403);
+            foreach($media as $mid)if(!one("SELECT id FROM media WHERE id=? AND patient_id=? AND owner_id=? AND archived_at IS NULL AND category IN ('document','photo')",[$mid,$pid,$u['id']]))fail('Файл не относится к этому приёму',403);
             $diagnosis=required($d,'diagnosis',5000);
             $id=insert('visits',['patient_id'=>$pid,'doctor_id'=>$u['id'],'visited_at'=>$day.' '.$time.':00','diagnosis'=>$diagnosis,'appliance'=>$appliance,'method'=>$extended?value($d,'method',190):'','recommendations'=>value($d,'recommendations',5000),'treatment_plan'=>$plan,'next_visit'=>date_value($d['next_visit']??null),'created_at'=>now()]);
             foreach($media as $mid)insert('visit_files',['visit_id'=>$id,'media_id'=>$mid]);

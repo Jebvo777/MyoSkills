@@ -32,7 +32,7 @@ function api_extra(string $action): bool {
         audit($u,'treatment.save','patient',$pid);json_response(['message'=>'План лечения сохранён']);
     case 'document.visibility':
         write_guard();$u=require_user(['doctor']);$d=input();$id=ident($d['id']??0);
-        if(!one("SELECT id FROM media WHERE id=? AND owner_id=? AND category='diploma'",[$id,$u['id']]))fail('Документ не найден',404);
+        if(!one("SELECT id FROM media WHERE id=? AND owner_id=? AND category='diploma' AND archived_at IS NULL",[$id,$u['id']]))fail('Документ не найден',404);
         sql('UPDATE media SET is_public=? WHERE id=?',[!empty($d['is_public'])?1:0,$id]);
         audit($u,'document.visibility','media',$id);json_response(['message'=>'Видимость документа обновлена']);
     case 'testimonial.me':
@@ -42,19 +42,19 @@ function api_extra(string $action): bool {
         $name=required($d,'author_name',100);$body=required($d,'body',3000);$rating=filter_var($d['rating']??5,FILTER_VALIDATE_INT);
         if($rating===false||$rating<1||$rating>5)fail('Оценка от 1 до 5');
         transaction(function() use($u,$name,$body,$rating){
-            sql("INSERT INTO testimonials (patient_id,author_name,rating,body,status,is_demo,created_at,updated_at) VALUES (?,?,?,?,'pending',?,?,?) ON DUPLICATE KEY UPDATE author_name=?,rating=?,body=?,status='pending',updated_at=?",[$u['id'],$name,$rating,$body,config('demo_labels')?1:0,now(),now(),$name,$rating,$body,now()]);
+            sql("INSERT INTO testimonials (patient_id,author_name,rating,body,status,is_demo,created_at,updated_at) VALUES (?,?,?,?,'pending',0,?,?) ON DUPLICATE KEY UPDATE author_name=?,rating=?,body=?,status='pending',is_demo=0,updated_at=?",[$u['id'],$name,$rating,$body,now(),now(),$name,$rating,$body,now()]);
             foreach(many("SELECT id FROM users WHERE role='admin' AND active=1") as $a)notification((int)$a['id'],'testimonial','Новый отзыв на модерации',$name,'?page=admin&tab=feedback');
             audit($u,'testimonial.submit');
         });json_response(['message'=>'Отзыв отправлен на модерацию']);
     case 'admin.testimonial.save':
         write_guard();$u=require_user(['admin']);$d=input();$id=ident($d['id']??0);$status=required($d,'status',20);
         if(!in_array($status,['approved','rejected','pending'],true))fail('Неверный статус');
-        $review=one('SELECT * FROM testimonials WHERE id=?',[$id]);if(!$review)fail('Отзыв не найден',404);
+        $review=one('SELECT * FROM testimonials WHERE id=?',[$id]);if(!$review || (int)$review['is_demo']===1)fail('Отзыв не найден',404);
         sql('UPDATE testimonials SET status=?,updated_at=? WHERE id=?',[$status,now(),$id]);
         audit($u,'testimonial.moderate','testimonial',$id);json_response(['message'=>'Статус отзыва обновлён']);
     case 'admin.asset.save':
         write_guard();$u=require_user(['admin']);$d=input();$id=ident($d['id']??0);
-        if(!one("SELECT id FROM media WHERE id=? AND category='site'",[$id]))fail('Материал не найден',404);
+        if(!one("SELECT id FROM media WHERE id=? AND category='site' AND archived_at IS NULL",[$id]))fail('Материал не найден',404);
         sql('UPDATE media SET original_name=?,note=?,is_public=? WHERE id=?',[required($d,'title',190),value($d,'note',255),!empty($d['is_public'])?1:0,$id]);
         audit($u,'asset.save','media',$id);json_response(['message'=>'Материал сохранён']);
     }

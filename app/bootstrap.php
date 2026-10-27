@@ -114,12 +114,27 @@ function write_guard(): void {
     $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? (input()['csrf'] ?? '');
     if (!is_string($token) || !hash_equals(csrf_token(),$token)) fail('Обновите страницу и повторите действие',419);
 }
+// The retired installation address space is never a sign-in identity.
+function reserved_account_email(string $email): bool {
+    return str_ends_with(mb_strtolower(trim($email)), '@myoskills.test');
+}
+function account_available(array $account): bool {
+    return empty($account['archived_at']) && !reserved_account_email((string)($account['email'] ?? ''));
+}
+function visible_accounts(array $accounts): array {
+    return array_values(array_filter($accounts, 'account_available'));
+}
+function password_reset_available(): bool {
+    return (bool)config('mail.enabled') && function_exists('mail')
+        && filter_var((string)config('mail.from'), FILTER_VALIDATE_EMAIL) !== false
+        && filter_var((string)config('app_url'), FILTER_VALIDATE_URL) !== false;
+}
 function user(): ?array {
     $id=$_SESSION['uid']??0;
     if(!$id) return null;
     $u=one('SELECT * FROM users WHERE id=? AND active=1',[(int)$id]);
     $tag=$_SESSION['credential_tag']??'';
-    if(!$u || !is_string($tag) || !hash_equals(hash('sha256',$u['password_hash']),$tag)) {
+    if(!$u || !account_available($u) || !is_string($tag) || !hash_equals(hash('sha256',$u['password_hash']),$tag)) {
         unset($_SESSION['uid'],$_SESSION['credential_tag']);
         return null;
     }
@@ -145,7 +160,7 @@ function public_user(array $u, bool $self = false): array {
     foreach(['email','phone','social_url'] as $field){$key=$field==='social_url'?'public_social':'public_'.$field;if($self || ((bool)$u['contact_public'] && ($preferences[$key]??true)))$result[$field]=$u[$field];}
     if($u['role']==='doctor') {
         $result['clinics']=json_decode($u['clinics_json']??'[]',true)?:[];
-        $result['documents']=many("SELECT id,original_name,mime_type FROM media WHERE owner_id=? AND category='diploma' AND is_public=1",[$u['id']]);
+        $result['documents']=many("SELECT id,original_name,mime_type FROM media WHERE owner_id=? AND category='diploma' AND is_public=1 AND archived_at IS NULL",[$u['id']]);
     }
     if($self) { $result['contact_public']=(bool)$u['contact_public']; $result['clinics']=json_decode($u['clinics_json']??'[]',true)?:[]; $result['preferences']=json_decode($u['preferences_json']??'{}',true)?:[]; }
     return $result;
@@ -153,8 +168,8 @@ function public_user(array $u, bool $self = false): array {
 function may_assign(array $u): bool { return $u['role']==='doctor' && $u['specialty']==='myotherapist' && (bool)$u['verified']; }
 function assert_doctor(array $u): void { if($u['role']!=='doctor' || !$u['verified']) fail('Действие доступно верифицированному специалисту',403); }
 function patient_access(int $patientId, array $u, bool $history = false): array {
-    $p=one('SELECT p.*,u.name,u.email,u.phone,u.social_url,u.city,u.contact_public,u.preferences_json FROM patients p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND u.active=1',[$patientId]);
-    if(!$p) fail('Пациент не найден',404);
+    $p=one("SELECT p.*,u.name,u.email,u.phone,u.social_url,u.city,u.contact_public,u.preferences_json FROM patients p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND u.active=1 AND u.archived_at IS NULL AND u.role='patient'",[$patientId]);
+    if(!$p || reserved_account_email((string)$p['email'])) fail('Пациент не найден',404);
     $preferences=json_decode($p['preferences_json']??'{}',true)?:[];unset($p['preferences_json']);
     if($u['role']==='admin') return $p;
     if($u['role']==='patient' && (int)$u['id']===$patientId && !$history) return $p;
@@ -195,11 +210,12 @@ function stats(int $id): array {
 }
 function settings(): array { $out=[]; foreach(many('SELECT * FROM app_settings') as $r) $out[$r['setting_key']]=$r['setting_value']; return $out; }
 function media_allowed(array $m,array $u): bool {
+    if(!empty($m['archived_at'])) return false;
     if($u['role']==='admin') return true;
     if($m['category']==='diploma') return $u['role']==='doctor' && (int)$m['owner_id']===(int)$u['id'];
     if($m['category']==='exercise') {
         if($u['role']==='doctor') return (bool)$u['verified'];
-        return (bool)one('SELECT a.id FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.patient_id=? AND e.video_media_id=? AND a.status=?',[$u['id'],$m['id'],'active']);
+        return (bool)one('SELECT a.id FROM assignments a JOIN exercises e ON e.id=a.exercise_id WHERE a.patient_id=? AND e.video_media_id=? AND a.status=? AND e.active=1 AND e.archived_at IS NULL',[$u['id'],$m['id'],'active']);
     }
     if($m['category']==='site') return false;
     if($m['category']==='document' && $u['role']==='patient' && (int)$m['owner_id']!==(int)$u['id']) return false;
